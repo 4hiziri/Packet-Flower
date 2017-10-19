@@ -1,2 +1,0 @@
-# complie
-`gcc sample.c -lnet`
