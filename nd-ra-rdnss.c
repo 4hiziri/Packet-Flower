@@ -40,31 +40,35 @@ int main(int argc, char** argv){
   char* host = "1::1";
   sip = libnet_name2addr6(l, host, LIBNET_DONT_RESOLVE);   
   dip = libnet_name2addr6(l, "ff02::ffff", LIBNET_DONT_RESOLVE);
-  trg.__u6_addr.__u6_addr8[8] = 0x19; // Set RDNSS info here.
 
-  // build router advertisement
-  uint8_t payload[] = {0xff, 0xff, 0xff, 0xff};
-  ptag = libnet_build_icmpv6_ndp_nadv(
-				      ND_ROUTER_ADVERT, // uint8_t type
-				      0, // uint8_t code
-				      0, // uint16_t check_sum
-				      64 * ND_RA_HOP_LIMIT + ND_RA_OTHER_CONFIG_FLAG, // uint32_t flags
-				      trg, // libnet_in6_addr target
-				      payload, // payload, // uint8_t* payload
-				      4, // payload_len, // uint32_t payload size
-				      l, // libnet_t*
-				      ptag // libnet_ptag_t ptag, 0->new
-				      );
-
-  // build router advertisement option
-  ptag = libnet_build_icmpv6_ndp_opt(
-				     ND_OPT_RDNSS, // uint8_t type // ND_OPT_* but rdnss doesn't exist
-				     payload, // uint8_t* option
-				     4, // uint32_t option size
-				     l, // libnet_t
-				     ptag // libnet_ptag_t ptag
-				     );
-
+  /********************************* 
+   *   build router advertisement  *
+   *********************************/
+  
+  // TODO: extract as function
+  // Set RDNSS info here.
+  trg.__u6_addr.__u6_addr8[8] = 0x19; 
+  trg.__u6_addr.__u6_addr8[9] = 0x3;
+  trg.__u6_addr.__u6_addr8[12] = 0xff;
+  trg.__u6_addr.__u6_addr8[13] = 0xff;
+  trg.__u6_addr.__u6_addr8[14] = 0xff;
+  trg.__u6_addr.__u6_addr8[15] = 0xff;
+  uint8_t payload[] = {0xff, 0xff, 0xff, 0xff,
+		       0xff, 0xff, 0xff, 0xff,
+		       0xff, 0xff, 0xff, 0xff,
+		       0xff, 0xff, 0xff, 0xff};		      		       
+  
+  libnet_build_icmpv6_ndp_nadv(
+			       ND_ROUTER_ADVERT, // uint8_t type
+			       0, // uint8_t code
+			       0, // uint16_t check_sum
+			       64 * ND_RA_HOP_LIMIT + ND_RA_OTHER_CONFIG_FLAG, // uint32_t flags
+			       trg, // libnet_in6_addr target
+			       payload, // payload, // uint8_t* payload
+			       16, // payload_len, // uint32_t payload size
+			       l, // libnet_t*
+			       0 // libnet_ptag_t ptag, 0->new
+			       );
   
   // build ipv6 packet
   libnet_build_ipv6(
