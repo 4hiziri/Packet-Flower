@@ -22,9 +22,9 @@ int main(int argc, char** argv){
   }
 
   // set argv
-  char *interface = argv[1];
-  char *dist_addr = argv[2];
-  char *src_addr = argv[3];
+  char *interface = argv[1];  
+  char *src_addr = argv[2];
+  char *dist_addr = argv[3];
   char *dns_addr = argv[4];
 
   libnet_t *l;
@@ -67,7 +67,7 @@ int main(int argc, char** argv){
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
-		    LIBNET_IPV6_H + LIBNET_ICMPV6_NDP_NADV_H, //uint16_t len
+		    LIBNET_IPV6_H,                            //uint16_t len
 		    IPPROTO_ICMP6,                            //uint8_t nh -> next header
 		    64,                                       //uint8_t hl -> hop limit
 		    sip,                                      //libnet_in6_addr src
@@ -78,9 +78,13 @@ int main(int argc, char** argv){
 		    0                                         //libnet_ptag_t ptag
 		    );
 
-  if(libnet_write(l) == -1) {
-    printf("libnet_write: %s\n", libnet_geterror(l));
-    exit(1);
+  for(int i = 0; i < 10000; i++){
+    if(libnet_write(l) == -1) {
+      printf("libnet_write: %s\n", libnet_geterror(l));
+      exit(1);
+    }
+
+    sleep(1);
   }
 
   libnet_destroy(l);
