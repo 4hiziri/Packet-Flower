@@ -78,11 +78,13 @@ int main(int argc, char** argv){
 		    0                                         //libnet_ptag_t ptag
 		    );
 
-  for(int i = 0; i < 10000; i++){
+  while(1){
     if(libnet_write(l) == -1) {
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
-    }    
+    }
+
+    sleep(0.01);
   }
 
   libnet_destroy(l);
