@@ -82,9 +82,7 @@ int main(int argc, char** argv){
     if(libnet_write(l) == -1) {
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
-    }
-
-    sleep(1);
+    }    
   }
 
   libnet_destroy(l);
