@@ -16,16 +16,17 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 			    const char* dns_addr);
 
 int main(int argc, char** argv){
-  if (argc != 5) {
-    fprintf(stderr, "%s <interface> <src addr> <dist addr> <dns addr>\n", argv[0]);
+  if (argc != 4) {
+    fprintf(stderr, "%s <interface> <dist addr> <dns addr>\n", argv[0]);
     exit(1);
   }
 
   // set argv
   char *interface = argv[1];  
-  char *src_addr = argv[2];
-  char *dist_addr = argv[3];
-  char *dns_addr = argv[4];
+  // char *src_addr = argv[2]; // unnecessary
+  char *src_addr = "ff02::1";
+  char *dist_addr = argv[2];
+  char *dns_addr = argv[3];
 
   libnet_t *l;
   libnet_in6_addr sip, dip, trg;
@@ -63,7 +64,9 @@ int main(int argc, char** argv){
 			       0                                               // libnet_ptag_t ptag, 0 means create new one
 			       );
 
-  // build ipv6 packet
+  /*********************************
+   *       build ipv6 packet       *
+   *********************************/
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
