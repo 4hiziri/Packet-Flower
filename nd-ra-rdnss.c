@@ -169,6 +169,18 @@ void build_icmpv6_src_link_addr_opt(libnet_t* l,
 void build_icmpv6_mtu_opt(libnet_t* l,
 			  uint8_t *payload,
 			  uint32_t mtu){
+  payload[0] = ND_OPT_MTU;
+  payload[1] = 1;
+
+  union len32{
+    uint8_t u8[4];
+    uint32_t u32[1];
+  } tmp;
+  tmp.u32[0] = mtu;  
+  for(int i = 0; i < 4; i++)
+    payload[2 + i] = tmp.u8[i];  
+  
+  return;
 }
 
 void build_icmpv6_prefix_opt(libnet_t* l,
