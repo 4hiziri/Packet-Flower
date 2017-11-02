@@ -17,15 +17,14 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 
 int main(int argc, char** argv){
   if (argc != 4) {
-    fprintf(stderr, "%s <interface> <dist addr> <dns addr>\n", argv[0]);
+    fprintf(stderr, "%s <interface> <src addr> <dns addr>\n", argv[0]);
     exit(1);
   }
 
   // set argv
-  char *interface = argv[1];  
-  // char *src_addr = argv[2]; // unnecessary
-  char *src_addr = "ff02::1";
-  char *dist_addr = argv[2];
+  char *interface = argv[1];    
+  char *dst_addr = "ff02::1";
+  char *src_addr = argv[2];
   char *dns_addr = argv[3];
 
   libnet_t *l;
@@ -43,7 +42,7 @@ int main(int argc, char** argv){
 
   // get ipv6-addr struct
   sip = libnet_name2addr6(l, src_addr, LIBNET_DONT_RESOLVE);
-  dip = libnet_name2addr6(l, dist_addr, LIBNET_DONT_RESOLVE);
+  dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);
 
   /*********************************
    *   build router advertisement  *
