@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <libnet.h>
+#include <arpa/inet.h>
 
 #define ND_RA_MANAGED_CONFIG_FLAG 0x0800000
 #define ND_RA_OTHER_CONFIG_FLAG   0x0400000
@@ -25,6 +26,7 @@ void build_icmpv6_mtu_opt(libnet_t* l,
 
 void build_icmpv6_prefix_opt(libnet_t* l,
 			     uint8_t *payload,
+			     uint8_t prefix_len,
 			     uint8_t flag,
 			     uint32_t valid_lifetime,
 			     uint32_t prefered_lifetime,			     
@@ -185,9 +187,40 @@ void build_icmpv6_mtu_opt(libnet_t* l,
 
 void build_icmpv6_prefix_opt(libnet_t* l,
 			     uint8_t *payload,
-			     uint8_t flag,
-			     uint32_t valid_lifetime,
-			     uint32_t prefered_lifetime,			     
-			     const char* prefix){  
+			     uint8_t prefix_len,
+			     uint8_t flag, // L|A|Reserved
+			     uint32_t valid_lifetime, // valid
+			     uint32_t prefered_lifetime, // able to refer?
+			     const char* prefix){
+  payload[0] = ND_OPT_PREFIX_INFORMATION;
+  payload[1] = 4;
+  payload[2] = prefix_len;
+  // L flag and A flag is available.
+  // L is on-link flag. This is 1, the same prefixes means they are on same link.
+  // A is Address Auto config flag. This is 1, this prefix can be used for gen global address
+  payload[3] = flag & 0xc0;
+
+  union len32{
+    uint8_t u8[4];
+    uint32_t u32[1];
+  } tmp;
+
+  tmp.u32[0] = valid_lifetime;
+  for(int i = 0; i < 4; i++) payload[4 + i] = tmp.u8[i];
+
+  tmp.u32[0] = prefered_lifetime;
+  for(int i = 0; i < 4; i++) payload[8 + i] = tmp.u8[i];
+
+  for(int i = 0; i < 4; i++) payload[12 + i] = 0; // reserved. sould be 0.
+
+  unsigned char buf[sizeof(struct in6_addr)];  
+  if (inet_pton(AF_INET6, prefix, buf)){
+    for(int i = 0; i < 16; i++) payload[16 + i] = buf[i];
+  }
+  else{
+    fprintf(stderr, "Prefix is invalid: %s", prefix);
+    exit(1);
+  }
+    
   return;
 }
