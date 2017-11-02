@@ -52,26 +52,26 @@ int main(int argc, char** argv){
   build_icmpv6_rdnss_opt(l, &trg, payload, lt, dns_addr);
 
   // how to append another header? malloc?
+  libnet_ptag_t tag;
+  uint8_t* opt = {0xab, 0xcd, 0xef, 0xff};  
+  tag = libnet_build_icmpv6_ndp_opt(0, // uint8_t type
+				    opt, // uint8_t* option
+				    0, // uint32_t option_size
+				    l, // libnet_t* l
+				    0 // libnet_ptag_t ptag
+				    );
 
-  /* libnet_build_icmpv6_ndp_nadv( */
-  /* 			       ND_ROUTER_ADVERT,                               // uint8_t type */
-  /* 			       0,                                              // uint8_t code */
-  /* 			       0,                                              // uint16_t check_sum */
-  /* 			       64 * ND_RA_HOP_LIMIT + ND_RA_OTHER_CONFIG_FLAG, // uint32_t flags */
-  /* 			       trg,                                            // libnet_in6_addr target */
-  /* 			       payload,                                        // uint8_t* payload */
-  /* 			       16,                                             // uint32_t payload size */
-  /* 			       l,                                              // libnet_t* context */
-  /* 			       0                                               // libnet_ptag_t ptag, 0 means create new one */
-  /* 			       ); */
-  
-  uint8_t* opt = {1, 2, 3, 4};  
-  libnet_build_icmpv6_ndp_opt(ND_OPT_RDNSS, // uint8_t type
-			      opt, // uint8_t* option
-			      0, // uint32_t option_size
-			      l, // libnet_t* l
-			      0 // libnet_ptag_t ptag
-			      );
+  libnet_build_icmpv6_ndp_nadv(
+  			       ND_ROUTER_ADVERT,                               // uint8_t type
+  			       0,                                              // uint8_t code
+  			       0,                                              // uint16_t check_sum
+  			       64 * ND_RA_HOP_LIMIT + ND_RA_OTHER_CONFIG_FLAG, // uint32_t flags
+  			       trg,                                            // libnet_in6_addr target
+  			       payload,                                        // uint8_t* payload
+  			       16,                                             // uint32_t payload size
+  			       l,                                              // libnet_t* context
+  			       tag                                               // libnet_ptag_t ptag, 0 means create new one
+  			       );
   fprintf(stderr, "suc");  
   /*********************************
    *       build ipv6 packet       *
