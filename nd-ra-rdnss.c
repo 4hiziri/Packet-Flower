@@ -15,6 +15,24 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 			    uint32_t lifetime,
 			    const char* dns_addr);
 
+void build_icmpv6_src_link_addr_opt(libnet_t* l,
+				    libnet_in6_addr *header,
+				    uint8_t *payload,
+				    const char* link_addr);
+
+void build_icmpv6_mtu_opt(libnet_t* l,
+			  libnet_in6_addr *header,
+			  uint8_t *payload,
+			  uint32_t mtu);
+
+void build_icmpv6_prefix_opt(libnet_t* l,
+			     libnet_in6_addr *header,
+			     uint8_t *payload,
+			     uint8_t flag,
+			     uint32_t valid_lifetime,
+			     uint32_t prefered_lifetime,			     
+			     const char* prefix);
+
 int main(int argc, char** argv){
   if (argc != 4) {
     fprintf(stderr, "%s <interface> <src addr> <dns addr>\n", argv[0]);
@@ -32,7 +50,7 @@ int main(int argc, char** argv){
   char errbuf[LIBNET_ERRBUF_SIZE];
 
   /***************************************************************
-    initialize libnet, this must be called before other functionsn
+    initialize libnet, this must be called before other function
    ***************************************************************/
   l = libnet_init(LIBNET_RAW6, interface, errbuf);
   if(l == NULL) {
@@ -50,6 +68,8 @@ int main(int argc, char** argv){
   uint32_t lt = LIFETIME_INF;
   uint8_t payload[16];
   build_icmpv6_rdnss_opt(l, &trg, payload, lt, dns_addr);
+
+  // how to append another header? malloc?
 
   libnet_build_icmpv6_ndp_nadv(
 			       ND_ROUTER_ADVERT,                               // uint8_t type
@@ -69,15 +89,15 @@ int main(int argc, char** argv){
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
-		    LIBNET_IPV6_H,                            //uint16_t len
-		    IPPROTO_ICMP6,                            //uint8_t nh -> next header
-		    64,                                       //uint8_t hl -> hop limit
-		    sip,                                      //libnet_in6_addr src
-		    dip,                                      //libnet_in6_addr dst
-		    NULL,                                     //uint8_t* payload
-		    0,                                        //uint32_t payload_s
-		    l,                                        //libnet_t* l
-		    0                                         //libnet_ptag_t ptag
+		    LIBNET_IPV6_H,                            // uint16_t len
+		    IPPROTO_ICMP6,                            // uint8_t nh -> next header
+		    64,                                       // uint8_t hl -> hop limit
+		    sip,                                      // libnet_in6_addr src
+		    dip,                                      // libnet_in6_addr dst
+		    NULL,                                     // uint8_t* payload
+		    0,                                        // uint32_t payload_s
+		    l,                                        // libnet_t* l
+		    0                                         // libnet_ptag_t ptag
 		    );
 
   while(1){
