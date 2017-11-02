@@ -16,17 +16,14 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 			    const char* dns_addr);
 
 void build_icmpv6_src_link_addr_opt(libnet_t* l,
-				    libnet_in6_addr *header,
 				    uint8_t *payload,
 				    const char* link_addr);
 
 void build_icmpv6_mtu_opt(libnet_t* l,
-			  libnet_in6_addr *header,
 			  uint8_t *payload,
 			  uint32_t mtu);
 
 void build_icmpv6_prefix_opt(libnet_t* l,
-			     libnet_in6_addr *header,
 			     uint8_t *payload,
 			     uint8_t flag,
 			     uint32_t valid_lifetime,
@@ -131,9 +128,54 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
   for (int i = 0; i < 16; i++)
     payload[i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
 
-  header->__u6_addr.__u6_addr8[8] = 0x19; // type num RDNSS
-  header->__u6_addr.__u6_addr8[9] = 0x2 + 0x1; // 0x2 + number_of_dns_addr
-  header->__u6_addr.__u6_addr32[3] = lifetime;
+  header->__u6_addr.__u6_addr8[8] = ND_OPT_RDNSS; // type num RDNSS
+  // TODO: check size is whether correct or not.
+  // this is strange, too strange
+  header->__u6_addr.__u6_addr8[9] = 0x2 + 0x1; // 0x2 + number_of_dns_addr, this means size?
+  header->__u6_addr.__u6_addr32[3] = lifetime; // what life time?
 
+  return;
+}
+
+/**
+ * This sets 'link_addr' and payload-len to 'payload'
+ *
+ * @param l libnet context
+ * @param payload actual return val
+ * @param link_addr MAC-addr
+ */
+void build_icmpv6_src_link_addr_opt(libnet_t* l,				    
+				    uint8_t *payload,
+				    const char* link_addr){
+  // if RA, 0x01 only. But NA or Redirect can use 0x02
+  payload[0] = ND_OPT_SOURCE_LINKADDR; // == 0x01
+  // if ethernet is used, length should be 1. MAC addr is 48 bit len.
+
+  payload[1] = 1;
+
+  // use link_addr like "\x12\x34\x56\xab\xcd\xef"?
+  for(int i = 0; i < 6; i++) // if MAC addr is 42(6 bytes), this is ok.
+    payload[2 + i] = link_addr[i];
+  
+  return;
+}
+
+/**
+ * This sets mtu to payload
+ * @param l libnet context
+ * @param payload actual ret val 
+ * @param mtu mtu
+ */
+void build_icmpv6_mtu_opt(libnet_t* l,
+			  uint8_t *payload,
+			  uint32_t mtu){
+}
+
+void build_icmpv6_prefix_opt(libnet_t* l,
+			     uint8_t *payload,
+			     uint8_t flag,
+			     uint32_t valid_lifetime,
+			     uint32_t prefered_lifetime,			     
+			     const char* prefix){  
   return;
 }
