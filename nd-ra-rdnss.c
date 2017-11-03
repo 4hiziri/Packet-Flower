@@ -375,8 +375,3 @@ int build_icmpv6_prefix_opt(libnet_t* l,
     
   return len * 8;
 }
-
-uint8_t* payload_malloc(int len){
-  return (uint8_t*)malloc(len * 8);
->>>>>>> 838ddd5503a7ca8d314c8d4516a809d78d3785a1
-}
