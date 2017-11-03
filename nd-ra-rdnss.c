@@ -12,10 +12,10 @@
 
 typedef struct libnet_in6_addr libnet_in6_addr;
 
-void build_icmpv6_rdnss_opt(libnet_t* l,			    
-			    uint8_t *payload,
-			    uint32_t lifetime,
-			    const char* dns_addr);
+int build_icmpv6_rdnss_opt(libnet_t* l,			    
+			   uint8_t **payload,
+			   uint32_t lifetime,
+			   const char* dns_addr);
 
 libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 				  uint8_t code,
@@ -69,22 +69,25 @@ int main(int argc, char** argv){
   if(l == NULL) {
     printf("libnet_init: %s\n", errbuf);
     exit(1);
-  }
+  }  
 
   // get ipv6-addr struct
   sip = libnet_name2addr6(l, src_addr, LIBNET_DONT_RESOLVE);
   dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);  
-
+  
   /*********************************
    *   build router advertisement  *
    *********************************/
+  // make opion payload
   uint32_t lt = LIFETIME_INF;
-  uint8_t payload[24];
-  build_icmpv6_rdnss_opt(l, payload, lt, dns_addr);
+  uint8_t* rdnss;
+  uint8_t* payload;
+  
+  int rdnss_len = build_icmpv6_rdnss_opt(l, &rdnss, lt, dns_addr);
+  int payload_s = rdnss_len;
   
   // how to append another header? malloc?
-  // Need use libnet_build_icmpv6_ndp_opt
-   
+  // Need use libnet_build_icmpv6_ndp_opt  
   build_icmpv6_ndp_ra(ND_ROUTER_ADVERT, // type
 		      0, // code
 		      0, // checksum
@@ -93,8 +96,8 @@ int main(int argc, char** argv){
 		      LIFETIME_INF, // lifetime
 		      1, // reachable time
 		      2, // retransmission
-		      payload, // payload
-		      24, // payload_s
+		      rdnss, // payload
+		      payload_s, // payload_s
 		      l,
 		      0
 		      );
@@ -127,6 +130,7 @@ int main(int argc, char** argv){
     sleep(0.01);
   }
 
+  free(rdnss);
   libnet_destroy(l);
 
   return 0;
@@ -140,16 +144,20 @@ int main(int argc, char** argv){
  * @param lifetime lifetime of dns server
  * @param dns_addr address of dns server, like "2001:db8::1"
  */
-void build_icmpv6_rdnss_opt(libnet_t* l,
-			    uint8_t *payload,
-			    uint32_t lifetime,
-			    const char* dns_addr){
-  // copy address, builder funciton accepts only uint8_t*
-  payload[0] = ND_OPT_RDNSS;
-  payload[1] = 2 + 1;
-  payload[2] = 0;
-  payload[3] = 0;
-
+int build_icmpv6_rdnss_opt(libnet_t* l,
+			   uint8_t** payload,
+			   uint32_t lifetime,
+			   const char* dns_addr){
+  int len = 2 + 1;  
+  
+  // copy address, builder funciton accepts only uint8_t*  
+  *payload = (uint8_t*)malloc(len * 8);
+  
+  (*payload)[0] = ND_OPT_RDNSS;
+  (*payload)[1] = len;
+  (*payload)[2] = 0;
+  (*payload)[3] = 0;
+  
   union {
     uint8_t u8[4];
     uint32_t u32[1];
@@ -157,12 +165,12 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 
   tmp.u32[0] = lifetime;
 
-  for(int i = 0; i < 4; i++) payload[4 + i] = tmp.u8[i];
+  for(int i = 0; i < 4; i++) (*payload)[4 + i] = tmp.u8[i];
   
   for (int i = 0; i < 16; i++)
-    payload[8 + i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
+    (*payload)[8 + i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
 
-  return;
+  return len * 8;
 }
 
 libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
