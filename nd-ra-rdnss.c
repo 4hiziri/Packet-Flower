@@ -65,9 +65,9 @@ int main(int argc, char** argv){
   libnet_in6_addr sip, dip;
   char errbuf[LIBNET_ERRBUF_SIZE];
 
-  /***************************************************************
-    initialize libnet, this must be called before other function
-   ***************************************************************/
+  /*****************************************************************
+   * Initialize libnet, this must be called before other function. *
+   *****************************************************************/
   l = libnet_init(LIBNET_RAW6, interface, errbuf);
   if(l == NULL) {
     printf("libnet_init: %s\n", errbuf);
@@ -79,7 +79,7 @@ int main(int argc, char** argv){
   dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);  
   
   /*********************************
-   *   build router advertisement  *
+   *   Build router advertisement  *
    *********************************/
   // make opion payload
   uint32_t lt = LIFETIME_INF;
@@ -159,7 +159,7 @@ int main(int argc, char** argv){
     }
     break;
 
-    sleep(0.01);
+    sleep(1);
   }
 
   free(rdnss);
@@ -169,12 +169,15 @@ int main(int argc, char** argv){
 }
 
 /**
- * set config value to header and payload.
+ * Set config value to header and payload.
+ * 128 bits, If addr is one.
+ * 
  * @param l libnet context
  * @param header header of RDNSS, set some value into this
  * @param payload dns address is set here
  * @param lifetime lifetime of dns server
  * @param dns_addr address of dns server, like "2001:db8::1"
+ * @return bytes size of payload
  */
 int build_icmpv6_rdnss_opt(libnet_t* l,
 			   uint8_t** payload,
@@ -260,10 +263,12 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 
 /**
  * This sets 'link_addr' and payload-len to 'payload'
+ * If ethernet, 64 bits
  *
  * @param l libnet context
  * @param payload actual return val
  * @param link_addr MAC-addr
+ * @return bytes size of payload
  */
 int build_icmpv6_src_link_addr_opt(libnet_t* l,				    
 				   uint8_t **payload,
@@ -286,9 +291,12 @@ int build_icmpv6_src_link_addr_opt(libnet_t* l,
 
 /**
  * This sets mtu to payload
+ * 64 bits
+ * 
  * @param l libnet context
  * @param payload actual ret val 
  * @param mtu mtu
+ * @return bytes size of payload
  */
 int build_icmpv6_mtu_opt(libnet_t* l,
 			 uint8_t **payload,
@@ -312,6 +320,19 @@ int build_icmpv6_mtu_opt(libnet_t* l,
   return len * 8;
 }
 
+/**
+ * This sets prefix option payloads.
+ * 256 bits
+ *
+ * @param l : Libnet context
+ * @param payload : Data is set here
+ * @param prefix_len : Prefix addr's network part length
+ * @param flag : Flag, only L and A flag. Others are reserved
+ * @param valid_lifetime : In this span, prefix can be used to judge whether such addr is on link or not.
+ * @param prefered_lifetime : This span means addr generating by this prefix is recomended in this span.
+ * @param prefix : Just prefix, length is defined by prefix_len.
+ * @return bytes size of payload
+ */
 int build_icmpv6_prefix_opt(libnet_t* l,
 			    uint8_t **payload,
 			    uint8_t prefix_len,
@@ -353,4 +374,9 @@ int build_icmpv6_prefix_opt(libnet_t* l,
   }
     
   return len * 8;
+}
+
+uint8_t* payload_malloc(int len){
+  return (uint8_t*)malloc(len * 8);
+>>>>>>> 838ddd5503a7ca8d314c8d4516a809d78d3785a1
 }
