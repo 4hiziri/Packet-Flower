@@ -1,37 +1,33 @@
 #include <stdio.h>
 #include <libnet.h>
 
-#define ND_RA_MANAGED_CONFIG_FLAG 0x0800000
-#define ND_RA_OTHER_CONFIG_FLAG   0x0400000
+#define ND_RA_MANAGED_CONFIG_FLAG 0x80
+#define ND_RA_OTHER_CONFIG_FLAG   0x40
 #define ND_RA_HOP_LIMIT           0x1000000
 #define ND_OPT_RDNSS              0x19
-#define LIFETIME_INF              0xffffffff
+#define LIFETIME_INF              0xffff
+
+#define max(A, B) (A) > (B) ? A : B
 
 typedef struct libnet_in6_addr libnet_in6_addr;
 
-void build_icmpv6_rdnss_opt(libnet_t* l,
-			    libnet_in6_addr *header,
+void build_icmpv6_rdnss_opt(libnet_t* l,			    
 			    uint8_t *payload,
 			    uint32_t lifetime,
 			    const char* dns_addr);
 
-void build_icmpv6_src_link_addr_opt(libnet_t* l,
-				    libnet_in6_addr *header,
-				    uint8_t *payload,
-				    const char* link_addr);
-
-void build_icmpv6_mtu_opt(libnet_t* l,
-			  libnet_in6_addr *header,
-			  uint8_t *payload,
-			  uint32_t mtu);
-
-void build_icmpv6_prefix_opt(libnet_t* l,
-			     libnet_in6_addr *header,
-			     uint8_t *payload,
-			     uint8_t flag,
-			     uint32_t valid_lifetime,
-			     uint32_t prefered_lifetime,			     
-			     const char* prefix);
+libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
+				  uint8_t code,
+				  uint16_t checksum,
+				  uint8_t hop_limit,
+				  uint8_t flags,
+				  uint16_t lifetime,
+				  uint32_t reachable_time,
+				  uint32_t retransmission_time,
+				  uint8_t* payload,
+				  uint32_t payload_s,
+				  libnet_t* l,
+				  libnet_ptag_t ptag);
 
 int main(int argc, char** argv){
   if (argc != 4) {
@@ -42,6 +38,7 @@ int main(int argc, char** argv){
   // set argv
   char *interface = argv[1];    
   char *dst_addr = "ff02::1";
+  char *trg_addr = "2001:db8::abcd";
   char *src_addr = argv[2];
   char *dns_addr = argv[3];
 
@@ -61,27 +58,32 @@ int main(int argc, char** argv){
   // get ipv6-addr struct
   sip = libnet_name2addr6(l, src_addr, LIBNET_DONT_RESOLVE);
   dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);
+  trg = libnet_name2addr6(l, trg_addr, LIBNET_DONT_RESOLVE);
 
   /*********************************
    *   build router advertisement  *
    *********************************/
   uint32_t lt = LIFETIME_INF;
-  uint8_t payload[16];
-  build_icmpv6_rdnss_opt(l, &trg, payload, lt, dns_addr);
-
+  uint8_t payload[24];
+  build_icmpv6_rdnss_opt(l, payload, lt, dns_addr);
+  
   // how to append another header? malloc?
+  // Need use libnet_build_icmpv6_ndp_opt
+   
+  build_icmpv6_ndp_ra(ND_ROUTER_ADVERT, // type
+		      0, // code
+		      0, // checksum
+		      64, // hop limit
+		      ND_RA_MANAGED_CONFIG_FLAG + ND_RA_OTHER_CONFIG_FLAG, // flags
+		      LIFETIME_INF, // lifetime
+		      1, // reachable time
+		      2, // retransmission
+		      payload, // payload
+		      24, // payload_s
+		      l,
+		      0
+		      );
 
-  libnet_build_icmpv6_ndp_nadv(
-			       ND_ROUTER_ADVERT,                               // uint8_t type
-			       0,                                              // uint8_t code
-			       0,                                              // uint16_t check_sum
-			       64 * ND_RA_HOP_LIMIT + ND_RA_OTHER_CONFIG_FLAG, // uint32_t flags
-			       trg,                                            // libnet_in6_addr target
-			       payload,                                        // uint8_t* payload
-			       16,                                             // uint32_t payload size
-			       l,                                              // libnet_t* context
-			       0                                               // libnet_ptag_t ptag, 0 means create new one
-			       );
 
   /*********************************
    *       build ipv6 packet       *
@@ -89,7 +91,7 @@ int main(int argc, char** argv){
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
-		    LIBNET_IPV6_H,                            // uint16_t len
+		    38,                            // uint16_t len
 		    IPPROTO_ICMP6,                            // uint8_t nh -> next header
 		    64,                                       // uint8_t hl -> hop limit
 		    sip,                                      // libnet_in6_addr src
@@ -105,6 +107,7 @@ int main(int argc, char** argv){
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
     }
+    break;
 
     sleep(0.01);
   }
@@ -123,17 +126,79 @@ int main(int argc, char** argv){
  * @param dns_addr address of dns server, like "2001:db8::1"
  */
 void build_icmpv6_rdnss_opt(libnet_t* l,
-			    libnet_in6_addr *header,
 			    uint8_t *payload,
 			    uint32_t lifetime,
 			    const char* dns_addr){
   // copy address, builder funciton accepts only uint8_t*
-  for (int i = 0; i < 16; i++)
-    payload[i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
+  payload[0] = ND_OPT_RDNSS;
+  payload[1] = 2 + 2;
+  payload[2] = 0;
+  payload[3] = 0;
 
-  header->__u6_addr.__u6_addr8[8] = 0x19; // type num RDNSS
-  header->__u6_addr.__u6_addr8[9] = 0x2 + 0x1; // 0x2 + number_of_dns_addr
-  header->__u6_addr.__u6_addr32[3] = lifetime;
+  union {
+    uint8_t u8[4];
+    uint32_t u32[1];
+  } tmp;
+
+  tmp.u32[0] = lifetime;
+
+  for(int i = 0; i < 4; i++) payload[4 + i] = tmp.u8[i];
+  
+  for (int i = 0; i < 16; i++)
+    payload[8 + i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
 
   return;
+}
+
+libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
+				  uint8_t code,
+				  uint16_t checksum,
+				  uint8_t hop_limit,
+				  uint8_t flags,
+				  uint16_t lifetime,
+				  uint32_t reachable_time,
+				  uint32_t retransmission_time,
+				  uint8_t* payload,
+				  uint32_t payload_s,
+				  libnet_t* l,
+				  libnet_ptag_t ptag){
+  union {
+    uint8_t u8[4];
+    uint16_t u16[2];
+    uint32_t u32[1];
+  } hop_flag_life, tmp;
+
+  // costruct hop , flag and lifetime
+  hop_flag_life.u8[3] = hop_limit;
+  hop_flag_life.u8[2] = flags;
+  hop_flag_life.u16[0] = lifetime;
+
+  // HACK: What is correct way?
+  libnet_in6_addr trg;
+  tmp.u32[0] = reachable_time;
+  for (int i = 0; i < 4; i++)
+    trg.__u6_addr.__u6_addr8[3 - i] = tmp.u8[i]; // must extract?
+  
+  tmp.u32[0] = retransmission_time;
+  for (int i = 0; i < 4; i++)
+    trg.__u6_addr.__u6_addr8[3 - i + 4] = tmp.u8[i];
+
+  // set overlaped part to trg
+  for (int i = 0; i < 4; i++) tmp.u8[i] = payload[i];
+  trg.__u6_addr.__u6_addr32[2] = tmp.u32[0];
+
+  for (int i = 0; i < 4; i++) tmp.u8[i] = payload[4 + i];
+  trg.__u6_addr.__u6_addr32[3] = tmp.u32[0];
+  
+  return libnet_build_icmpv6_ndp_nadv(
+				      type,                      // uint8_t type
+				      code,                      // uint8_t code
+				      checksum,                  // uint16_t check_sum
+				      hop_flag_life.u32[0],      // uint32_t flags, this is
+				      trg,                       // libnet_in6_addr target
+				      payload + 8,               // uint8_t* payload
+				      max(payload_s - 8, 0),     // uint32_t payload size
+				      l,                         // libnet_t* context
+				      ptag                       // libnet_ptag_t ptag, 0 means create new one
+				      );
 }
