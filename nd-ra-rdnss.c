@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <libnet.h>
+#include <arpa/inet.h>
 
 #define ND_RA_MANAGED_CONFIG_FLAG 0x80
 #define ND_RA_OTHER_CONFIG_FLAG   0x40
-#define ND_RA_HOP_LIMIT           0x1000000
+#define ND_RA_HOP_LIMIT           0x1000000 // wrong
 #define ND_OPT_RDNSS              0x19
 #define LIFETIME_INF              0xffff
 
@@ -28,6 +29,22 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 				  uint32_t payload_s,
 				  libnet_t* l,
 				  libnet_ptag_t ptag);
+
+void build_icmpv6_src_link_addr_opt(libnet_t* l,
+				    uint8_t *payload,
+				    const char* link_addr);
+
+void build_icmpv6_mtu_opt(libnet_t* l,
+			  uint8_t *payload,
+			  uint32_t mtu);
+
+void build_icmpv6_prefix_opt(libnet_t* l,
+			     uint8_t *payload,
+			     uint8_t prefix_len,
+			     uint8_t flag,
+			     uint32_t valid_lifetime,
+			     uint32_t prefered_lifetime,			     
+			     const char* prefix);
 
 int main(int argc, char** argv){
   if (argc != 4) {
@@ -199,4 +216,90 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 				      l,                         // libnet_t* context
 				      ptag                       // libnet_ptag_t ptag, 0 means create new one
 				      );
+}
+
+/**
+ * This sets 'link_addr' and payload-len to 'payload'
+ *
+ * @param l libnet context
+ * @param payload actual return val
+ * @param link_addr MAC-addr
+ */
+void build_icmpv6_src_link_addr_opt(libnet_t* l,				    
+				    uint8_t *payload,
+				    const char* link_addr){
+  // if RA, 0x01 only. But NA or Redirect can use 0x02
+  payload[0] = ND_OPT_SOURCE_LINKADDR; // == 0x01
+  // if ethernet is used, length should be 1. MAC addr is 48 bit len.
+
+  payload[1] = 1;
+
+  // use link_addr like "\x12\x34\x56\xab\xcd\xef"?
+  for(int i = 0; i < 6; i++) // if MAC addr is 42(6 bytes), this is ok.
+    payload[2 + i] = link_addr[i];
+  
+  return;
+}
+
+/**
+ * This sets mtu to payload
+ * @param l libnet context
+ * @param payload actual ret val 
+ * @param mtu mtu
+ */
+void build_icmpv6_mtu_opt(libnet_t* l,
+			  uint8_t *payload,
+			  uint32_t mtu){
+  payload[0] = ND_OPT_MTU;
+  payload[1] = 1;
+
+  union len32{
+    uint8_t u8[4];
+    uint32_t u32[1];
+  } tmp;
+  tmp.u32[0] = mtu;  
+  for(int i = 0; i < 4; i++)
+    payload[2 + i] = tmp.u8[i];  
+  
+  return;
+}
+
+void build_icmpv6_prefix_opt(libnet_t* l,
+			     uint8_t *payload,
+			     uint8_t prefix_len,
+			     uint8_t flag, // L|A|Reserved
+			     uint32_t valid_lifetime, // valid
+			     uint32_t prefered_lifetime, // able to refer?
+			     const char* prefix){
+  payload[0] = ND_OPT_PREFIX_INFORMATION;
+  payload[1] = 4;
+  payload[2] = prefix_len;
+  // L flag and A flag is available.
+  // L is on-link flag. This is 1, the same prefixes means they are on same link.
+  // A is Address Auto config flag. This is 1, this prefix can be used for gen global address
+  payload[3] = flag & 0xc0;
+
+  union len32{
+    uint8_t u8[4];
+    uint32_t u32[1];
+  } tmp;
+
+  tmp.u32[0] = valid_lifetime;
+  for(int i = 0; i < 4; i++) payload[4 + i] = tmp.u8[i];
+
+  tmp.u32[0] = prefered_lifetime;
+  for(int i = 0; i < 4; i++) payload[8 + i] = tmp.u8[i];
+
+  for(int i = 0; i < 4; i++) payload[12 + i] = 0; // reserved. sould be 0.
+
+  unsigned char buf[sizeof(struct in6_addr)];  
+  if (inet_pton(AF_INET6, prefix, buf)){
+    for(int i = 0; i < 16; i++) payload[16 + i] = buf[i];
+  }
+  else{
+    fprintf(stderr, "Prefix is invalid: %s", prefix);
+    exit(1);
+  }
+    
+  return;
 }
