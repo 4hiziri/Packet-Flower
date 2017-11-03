@@ -6,7 +6,10 @@
 #define ND_RA_OTHER_CONFIG_FLAG   0x40
 #define ND_RA_HOP_LIMIT           0x1000000 // wrong
 #define ND_OPT_RDNSS              0x19
+#define ND_OPT_PREFIX_L_FLAG      0x80
+#define ND_OPT_PREFIX_A_FLAG      0x40
 #define LIFETIME_INF              0xffff
+#define VALIDTIME_INF             0xffffffff
 
 #define max(A, B) (A) > (B) ? A : B
 
@@ -80,11 +83,40 @@ int main(int argc, char** argv){
    *********************************/
   // make opion payload
   uint32_t lt = LIFETIME_INF;
-  uint8_t* rdnss;
-  uint8_t* payload;
-  
+  uint8_t* rdnss;  
   int rdnss_len = build_icmpv6_rdnss_opt(l, &rdnss, lt, dns_addr);
-  int payload_s = rdnss_len;
+
+  uint8_t* mtu;
+  int mtu_len = build_icmpv6_mtu_opt(l, &mtu, 0xaabbccdd);
+
+  uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len);
+  int payload_s = 0;
+
+  uint8_t* link;
+  int link_len = build_icmpv6_src_link_addr_opt(l, &link, "\xaa\xbb\xcc\xdd\xee\xff");
+
+  uint8_t* prefix;
+  int prefix_len = build_icmpv6_prefix_opt(l,
+					   &prefix,
+					   64,
+					   ND_OPT_PREFIX_L_FLAG + ND_OPT_PREFIX_A_FLAG,
+					   0xaabbccdd,
+					   0x11223344,
+					   "2001:db8::");
+
+  for (int i = 0; i < rdnss_len; i++) payload[payload_s + i] = rdnss[i];
+  payload_s += rdnss_len;
+  
+  for (int i = 0; i < mtu_len; i++) payload[payload_s + i] = mtu[i];
+  payload_s += mtu_len;
+
+  for (int i = 0; i < link_len; i++) payload[payload_s + i] = link[i];
+  payload_s += link_len;
+
+  for (int i = 0; i < prefix_len; i++) payload[payload_s + i] = prefix[i];
+  payload_s += prefix_len;
+  
+  free(rdnss); free(mtu);    
   
   // how to append another header? malloc?
   // Need use libnet_build_icmpv6_ndp_opt  
@@ -96,7 +128,7 @@ int main(int argc, char** argv){
 		      LIFETIME_INF, // lifetime
 		      1, // reachable time
 		      2, // retransmission
-		      rdnss, // payload
+		      payload, // payload
 		      payload_s, // payload_s
 		      l,
 		      0
@@ -109,7 +141,7 @@ int main(int argc, char** argv){
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
-		    40,                            // uint16_t len
+		    16 + payload_s,                                       // uint16_t len
 		    IPPROTO_ICMP6,                            // uint8_t nh -> next header
 		    64,                                       // uint8_t hl -> hop limit
 		    sip,                                      // libnet_in6_addr src
@@ -266,6 +298,8 @@ int build_icmpv6_mtu_opt(libnet_t* l,
   
   (*payload)[0] = ND_OPT_MTU;
   (*payload)[1] = len;
+  (*payload)[2] = 0;
+  (*payload)[3] = 0;
 
   union len32{
     uint8_t u8[4];
@@ -273,7 +307,7 @@ int build_icmpv6_mtu_opt(libnet_t* l,
   } tmp;
   tmp.u32[0] = mtu;
   for(int i = 0; i < 4; i++)
-    (*payload)[2 + i] = tmp.u8[i];  
+    (*payload)[4 + 3 - i] = tmp.u8[i];  
   
   return len * 8;
 }
@@ -302,10 +336,10 @@ int build_icmpv6_prefix_opt(libnet_t* l,
   } tmp;
 
   tmp.u32[0] = valid_lifetime;
-  for(int i = 0; i < 4; i++) (*payload)[4 + i] = tmp.u8[i];
+  for(int i = 0; i < 4; i++) (*payload)[4 + 3 - i] = tmp.u8[i];
 
   tmp.u32[0] = prefered_lifetime;
-  for(int i = 0; i < 4; i++) (*payload)[8 + i] = tmp.u8[i];
+  for(int i = 0; i < 4; i++) (*payload)[8 + 3 - i] = tmp.u8[i];
 
   for(int i = 0; i < 4; i++) (*payload)[12 + i] = 0; // reserved. sould be 0.
 
