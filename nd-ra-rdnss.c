@@ -38,12 +38,11 @@ int main(int argc, char** argv){
   // set argv
   char *interface = argv[1];    
   char *dst_addr = "ff02::1";
-  char *trg_addr = "2001:db8::abcd";
   char *src_addr = argv[2];
   char *dns_addr = argv[3];
 
   libnet_t *l;
-  libnet_in6_addr sip, dip, trg;
+  libnet_in6_addr sip, dip;
   char errbuf[LIBNET_ERRBUF_SIZE];
 
   /***************************************************************
@@ -57,8 +56,7 @@ int main(int argc, char** argv){
 
   // get ipv6-addr struct
   sip = libnet_name2addr6(l, src_addr, LIBNET_DONT_RESOLVE);
-  dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);
-  trg = libnet_name2addr6(l, trg_addr, LIBNET_DONT_RESOLVE);
+  dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);  
 
   /*********************************
    *   build router advertisement  *
@@ -91,7 +89,7 @@ int main(int argc, char** argv){
   libnet_build_ipv6(
 		    0,                                        // uint8_t traffic class
 		    0,                                        // uint32_t flow label
-		    38,                            // uint16_t len
+		    40,                            // uint16_t len
 		    IPPROTO_ICMP6,                            // uint8_t nh -> next header
 		    64,                                       // uint8_t hl -> hop limit
 		    sip,                                      // libnet_in6_addr src
@@ -131,7 +129,7 @@ void build_icmpv6_rdnss_opt(libnet_t* l,
 			    const char* dns_addr){
   // copy address, builder funciton accepts only uint8_t*
   payload[0] = ND_OPT_RDNSS;
-  payload[1] = 2 + 2;
+  payload[1] = 2 + 1;
   payload[2] = 0;
   payload[3] = 0;
 
