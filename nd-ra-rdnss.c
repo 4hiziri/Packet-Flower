@@ -14,29 +14,28 @@
 typedef struct libnet_in6_addr libnet_in6_addr;
 
 int build_icmpv6_rdnss_opt(libnet_t* l,
-			    libnet_in6_addr *header,
-			    uint8_t *payload,
-			    uint32_t lifetime,
-			    const char* dns_addr);
+			   libnet_in6_addr *header,
+			   uint8_t *payload,
+			   uint32_t lifetime,
+			   const char* dns_addr);
 
 int build_icmpv6_src_link_addr_opt(libnet_t* l,
-				    uint8_t *payload,
-				    const char* link_addr);
+				   uint8_t *payload,
+				   const char* link_addr);
 
 int build_icmpv6_mtu_opt(libnet_t* l,
-			  uint8_t *payload,
-			  uint32_t mtu);
+			 uint8_t *payload,
+			 uint32_t mtu);
 
 int build_icmpv6_prefix_opt(libnet_t* l,
-			     uint8_t *payload,
-			     uint8_t prefix_len,
-			     uint8_t flag,
-			     uint32_t valid_lifetime,
-			     uint32_t prefered_lifetime,			     
-			     const char* prefix);
+			    uint8_t *payload,
+			    uint8_t prefix_len,
+			    uint8_t flag,
+			    uint32_t valid_lifetime,
+			    uint32_t prefered_lifetime,			     
+			    const char* prefix);
 
 void* payload_malloc();
-
 
 int main(int argc, char** argv){
   if (argc != 4) {
