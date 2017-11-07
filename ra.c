@@ -69,10 +69,10 @@ int build_icmpv6_prefix_opt(libnet_t* l,
 int options = 0;
 
 /**
- * CMD inteface src dst <option>
+ * CMD inteface dst src <options>
  * interface: NIC
  * src: source adderss
- * dst: distination address
+ * dst: destination address
  *
  * router advertisement param
  * --hop-limit hop limit
