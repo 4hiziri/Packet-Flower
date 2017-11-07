@@ -12,7 +12,7 @@ main(int argc, char **argv) {
         int this_option_optind = optind ? optind : 1;
         int option_index = 0;
         static struct option long_options[] = {
-	  {"hop-limit",  required_argument, 0,  0 },
+	  {"hop-limit",  optional_argument, 0,  0 }, // --hop-limit=123
 	  {"fo",         no_argument,       0,  0 }, // make this return macro val
 	  {"fm",         no_argument,       0,  0 },
 	  {"lifetime",   required_argument, 0,  0 },
@@ -76,10 +76,10 @@ main(int argc, char **argv) {
         }
     }
 
-    if (optind < argc) {
+    if (optind < argc) 
         printf("non-option ARGV-elements: ");
         while (optind < argc)
-            printf("%s ", argv[optind++]);
+	  printf("%s ", argv[optind++]);
         printf("\n");
     }
 
