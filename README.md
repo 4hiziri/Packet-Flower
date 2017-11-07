@@ -1,8 +1,12 @@
 # Usage
 `CMD inteface source-address destination-address <options>`
-interface: network interface name. ex) enp1s0, eth1
-source-address: source adderss. ex) 2001:db8::1
-destination-address: distination address. ex) 2001:db8::2
+
++ interface
+  - network interface name. ex) enp1s0, eth1
++ source-address
+  - source adderss. ex) 2001:db8::1
++ destination-address
+  - distination address. ex) 2001:db8::2
 
 # router advertisement param
 + --hop-limit hop limit
