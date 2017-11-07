@@ -33,7 +33,7 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 				  libnet_t* l,
 				  libnet_ptag_t ptag);
 
-int build_icmpv6_src_link_addr_opt(libnet_t* l,
+int build_icmpv6_trg_link_addr_opt(libnet_t* l,
 				   uint8_t **payload,
 				   const char* link_addr);
 
@@ -257,7 +257,7 @@ int main(int argc, char** argv){
 
   uint8_t* link = NULL;
   int link_len = 0;
-  if (options & OPT_LINK) link_len = build_icmpv6_src_link_addr_opt(l, &link, link_addr);
+  if (options & OPT_LINK) link_len = build_icmpv6_trg_link_addr_opt(l, &link, link_addr);
 
   uint8_t* prefix = NULL;
   int prefix_len = 0;
@@ -436,7 +436,7 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
  * @param link_addr MAC-addr
  * @return bytes size of payload
  */
-int build_icmpv6_src_link_addr_opt(libnet_t* l,
+int build_icmpv6_trg_link_addr_opt(libnet_t* l,
 				   uint8_t **payload,
 				   const char* link_addr){
   int len = 1;
