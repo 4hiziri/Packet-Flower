@@ -81,16 +81,12 @@ int main(int argc, char** argv){
   /*********************************
    *   Build router advertisement  *
    *********************************/
-  // make opion payload
-  uint32_t lt = LIFETIME_INF;
+  // make opion payload  
   uint8_t* rdnss;  
-  int rdnss_len = build_icmpv6_rdnss_opt(l, &rdnss, lt, dns_addr);
+  int rdnss_len = build_icmpv6_rdnss_opt(l, &rdnss, LIFETIME_INF, dns_addr);
 
   uint8_t* mtu;
-  int mtu_len = build_icmpv6_mtu_opt(l, &mtu, 0xaabbccdd);
-
-  uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len);
-  int payload_s = 0;
+  int mtu_len = build_icmpv6_mtu_opt(l, &mtu, 0xaabbccdd);  
 
   uint8_t* link;
   int link_len = build_icmpv6_src_link_addr_opt(l, &link, "\xaa\xbb\xcc\xdd\xee\xff");
@@ -104,6 +100,9 @@ int main(int argc, char** argv){
 					   0x11223344,
 					   "2001:db8::");
 
+  uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len + link_len + prefix_len);
+  int payload_s = 0;
+
   for (int i = 0; i < rdnss_len; i++) payload[payload_s + i] = rdnss[i];
   payload_s += rdnss_len;
   
@@ -116,7 +115,7 @@ int main(int argc, char** argv){
   for (int i = 0; i < prefix_len; i++) payload[payload_s + i] = prefix[i];
   payload_s += prefix_len;
   
-  free(rdnss); free(mtu);    
+  free(rdnss); free(mtu); free(link); free(prefix);
   
   // how to append another header? malloc?
   // Need use libnet_build_icmpv6_ndp_opt  
@@ -162,7 +161,7 @@ int main(int argc, char** argv){
     sleep(1);
   }
 
-  free(rdnss);
+  free(payload);
   libnet_destroy(l);
 
   return 0;
