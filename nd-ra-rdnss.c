@@ -35,7 +35,7 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
 
 int build_icmpv6_trg_link_addr_opt(libnet_t* l,
 				   uint8_t **payload,
-				   const char* link_addr);
+				   const uint8_t* link_addr);
 
 int build_icmpv6_mtu_opt(libnet_t* l,
 			 uint8_t **payload,
@@ -101,9 +101,9 @@ int options = 0;
  * --p-valid prefix valid lifetime
  * --p-prefer prefix prefered lifetime
  */
-int main(int argc, char** argv){
+int main(int argc, char** argv){  
   uint8_t  icmpv6_hop_limit = 0; // 0 means this ra doesn't have hop limit.
-  uint8_t  icmpv6_flags     = 0; 
+  uint8_t  icmpv6_flags     = 0;
   uint16_t icmpv6_lifetime  = 0; // 0 - 9000
   uint32_t icmpv6_reachable = 0;
   uint32_t icmpv6_retrans   = 0;
@@ -113,7 +113,7 @@ int main(int argc, char** argv){
 
   uint32_t mtu_mtu = 0;
 
-  char* link_addr = NULL;
+  uint8_t link_addr[6];
 
   char*    prefix_prefix            = NULL;
   uint8_t  prefix_prefix_len        = 0;
@@ -171,7 +171,7 @@ int main(int argc, char** argv){
       break;
     case OPT_RDNSS:
       options |= OPT_RDNSS;
-      rdnss_dns_addr = optarg; // Is this error? I think optarg points argv address, this may not be error.      
+      rdnss_dns_addr = optarg; // Is this error? I think optarg points argv address, this may not be error.
       break;
     case OPT_RDNSS_LT:
       rdnss_lifetime = atoi(optarg);
@@ -182,20 +182,27 @@ int main(int argc, char** argv){
       break;
     case OPT_LINK:
       options |= OPT_LINK;
-      link_addr = optarg;
+
+      char* addr = strtok(optarg, ":");
+      link_addr[0] = strtol(addr, NULL, 16);;
+            
+      for (int i = 1; i < 6; i++){
+	link_addr[i] = strtol(strtok(NULL, ":"), NULL, 16);
+      }
+
       break;
     case OPT_PREFIX:
       options |= OPT_PREFIX;
-      
+
       char* prefix_str = strtok(optarg, "/");
       if (prefix_str == NULL) {
 	fprintf(stderr, "Prefix option error: Prefix address is invalid, length is missig. ex) 2001:db8::/64");
 	exit(1);
       }
       char* len = strtok(NULL, "/");
-      
+
       prefix_prefix = prefix_str;
-      prefix_prefix_len = atoi(len);      
+      prefix_prefix_len = atoi(len);
       break;
     case OPT_PREFIX_LF:
       prefix_flags |= ND_OPT_PREFIX_L_FLAG;
@@ -214,12 +221,12 @@ int main(int argc, char** argv){
       exit(1);
     }
   }
-
+  
   if ((argc - optind) < 4) {
     fprintf(stderr, "%s interface dst-addr src-addr <options>\n", argv[0]);
     exit(1);
   }
-
+  
   // set argv
   char *interface = argv[optind];
   // char *dst_addr = "ff02::1";
@@ -272,7 +279,7 @@ int main(int argc, char** argv){
   // concat options to payload
   uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len + link_len + prefix_len);
   int payload_s = 0;
-  
+
   for (int i = 0; i < rdnss_len; i++) payload[payload_s + i] = rdnss[i];
   payload_s += rdnss_len;
 
@@ -438,7 +445,7 @@ libnet_ptag_t build_icmpv6_ndp_ra(uint8_t type,
  */
 int build_icmpv6_trg_link_addr_opt(libnet_t* l,
 				   uint8_t **payload,
-				   const char* link_addr){
+				   const uint8_t* link_addr){
   int len = 1;
   *payload = (uint8_t*)malloc(len * 8);
 
@@ -448,7 +455,6 @@ int build_icmpv6_trg_link_addr_opt(libnet_t* l,
   // if ethernet is used, length should be 1. MAC addr is 48 bit len.
   (*payload)[1] = len;
 
-  // use link_addr like "\x12\x34\x56\xab\xcd\xef"?
   for(int i = 0; i < 6; i++) // if MAC addr is 42(6 bytes), this is ok.
     (*payload)[2 + i] = link_addr[i];
 
