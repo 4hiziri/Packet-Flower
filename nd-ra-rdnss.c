@@ -63,8 +63,8 @@ int options = 0;
  *
  * router advertisement param
  * --hop-limit hop limit
- * -o other flag
- * -m managed flag
+ * -fo other flag
+ * -fm managed flag
  * --lifetime lifetime
  * --reachable reachable time
  * --retrans retransmission time
@@ -100,11 +100,21 @@ int main(int argc, char** argv){
   // "fe80::9fd6:68ca:13cc:bbe2";
   char *dst_addr = argv[2];
   char *src_addr = argv[3];
-
   libnet_t *l;
   libnet_in6_addr sip, dip;
   char errbuf[LIBNET_ERRBUF_SIZE];
 
+  char** av = argv;    
+
+  /**********
+   * option *
+   **********/
+  av += 4;
+  argc -= 4;
+  while(argc > 0 && *av[0] == '-')
+  
+  
+    
   /*****************************************************************
    * Initialize libnet, this must be called before other function. *
    *****************************************************************/
