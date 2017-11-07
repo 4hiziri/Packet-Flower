@@ -18,18 +18,18 @@
 
 # ra option param
 + RDNSS
-- -r use rdnss option: dns address
-- --r-lifetime rdnss lifetime
+  - -r use rdnss option: dns address
+  - --r-lifetime rdnss lifetime
  
 + MTU
-- -m use mtu option: mtu
+  - -m use mtu option: mtu
  
 + target link address
-- -l use link option: link address
+  - -l use link option: link address
  
 + Prefix
-- -p use prefix option: prefix addr and length like 2001:db8::/64
-- --p-l prefix L flag
-- --p-a prefix A flag
-- --p-valid prefix valid lifetime
-- --p-prefer prefix prefered lifetime
+  - -p use prefix option: prefix addr and length like 2001:db8::/64
+  - --p-l prefix L flag
+  - --p-a prefix A flag
+  - --p-valid prefix valid lifetime
+  - --p-prefer prefix prefered lifetime
