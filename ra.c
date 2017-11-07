@@ -50,7 +50,7 @@ int build_icmpv6_prefix_opt(libnet_t* l,
 			    const char* prefix);
 
 // for option
-#define ICMPV6        0x00
+#define ICMPV6        0x00 // unnecessary?
 #define ICMPV6_HL     0x01 // hop limit
 #define ICMPV6_OF     0x02 // o flag
 #define ICMPV6_MF     0x03 // m flag
@@ -66,6 +66,8 @@ int build_icmpv6_prefix_opt(libnet_t* l,
 #define OPT_PREFIX_PT 0x44 // prefered time
 #define OPT_RDNSS     0x80
 #define OPT_RDNSS_LT  0x81 // life time
+#define COUNT         0x100
+#define INTERVAL      0x200
 int options = 0;
 
 /**
@@ -101,7 +103,9 @@ int options = 0;
  * --p-valid prefix valid lifetime
  * --p-prefer prefix prefered lifetime
  */
-int main(int argc, char** argv){  
+int main(int argc, char** argv){
+  int count = 1;
+  int interval = 1000000; // this mean mili sec.
   uint8_t  icmpv6_hop_limit = 0; // 0 means this ra doesn't have hop limit.
   uint8_t  icmpv6_flags     = 0;
   uint16_t icmpv6_lifetime  = 0; // 0 - 9000
@@ -128,6 +132,8 @@ int main(int argc, char** argv){
   while (1) {
     int option_index = 0;
     static struct option long_options[] = {
+      {"c",          required_argument, 0,  COUNT         },
+      {"i",          required_argument, 0,  INTERVAL     },
       {"hop-limit",  required_argument, 0,  ICMPV6_HL     },
       {"of",         no_argument,       0,  ICMPV6_OF     }, // make this return macro val
       {"mf",         no_argument,       0,  ICMPV6_MF     },
@@ -216,6 +222,12 @@ int main(int argc, char** argv){
     case OPT_PREFIX_PT:
       prefix_prefered_lifetime = atoi(optarg);
       break;
+    case COUNT:
+      count = atoi(optarg);
+      break;
+    case INTERVAL:
+      interval = atof(optarg);
+      break;
     default:
       fprintf(stderr, "Invalid option val: %d\n", c);
       exit(1);
@@ -230,7 +242,6 @@ int main(int argc, char** argv){
   // set argv
   char *interface = argv[optind];
   // char *dst_addr = "ff02::1";
-  // "fe80::9fd6:68ca:13cc:bbe2";
   char *dst_addr = argv[optind+ 1];
   char *src_addr = argv[optind+ 2];
   libnet_t *l;
@@ -326,13 +337,12 @@ int main(int argc, char** argv){
 		    0                 // libnet_ptag_t ptag
 		    );
 
-  while(1){
+  for (int i = 0; i < count; i++) {
     if(libnet_write(l) == -1) {
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
-    }
-    break;
-    sleep(1);
+    }   
+    usleep(interval);
   }
 
   free(payload);
