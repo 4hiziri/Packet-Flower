@@ -10,8 +10,6 @@
 #define ND_OPT_RDNSS              0x19
 #define ND_OPT_PREFIX_L_FLAG      0x80
 #define ND_OPT_PREFIX_A_FLAG      0x40
-#define LIFETIME_INF              0xffff
-#define VALIDTIME_INF             0xffffffff
 
 #define max(A, B) (A) > (B) ? A : B
 
@@ -104,14 +102,14 @@ int options = 0;
  * --p-prefer prefix prefered lifetime
  */
 int main(int argc, char** argv){
-  uint8_t  icmpv6_hop_limit = 0;
-  uint8_t  icmpv6_flags     = 0;
-  uint16_t icmpv6_lifetime  = 0;
+  uint8_t  icmpv6_hop_limit = 0; // 0 means this ra doesn't have hop limit.
+  uint8_t  icmpv6_flags     = 0; 
+  uint16_t icmpv6_lifetime  = 0; // 0 - 9000
   uint32_t icmpv6_reachable = 0;
   uint32_t icmpv6_retrans   = 0;
 
   char*    rdnss_dns_addr = NULL;
-  uint32_t rdnss_lifetime = 0; // set default to inf later
+  uint32_t rdnss_lifetime = 0xffffffff;
 
   uint32_t mtu_mtu = 0;
 
@@ -120,8 +118,8 @@ int main(int argc, char** argv){
   char*    prefix_prefix            = NULL;
   uint8_t  prefix_prefix_len        = 0;
   uint8_t  prefix_flags             = 0;
-  uint32_t prefix_valid_lifetime    = 0;
-  uint32_t prefix_prefered_lifetime = 0;
+  uint32_t prefix_valid_lifetime    = 0xffffffff;
+  uint32_t prefix_prefered_lifetime = 0xffffffff;
 
   /**********
    * option *
