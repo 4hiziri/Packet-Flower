@@ -4,7 +4,6 @@
 
 #define ND_RA_MANAGED_CONFIG_FLAG 0x80
 #define ND_RA_OTHER_CONFIG_FLAG   0x40
-#define ND_RA_HOP_LIMIT           0x1000000 // wrong
 #define ND_OPT_RDNSS              0x19
 #define ND_OPT_PREFIX_L_FLAG      0x80
 #define ND_OPT_PREFIX_A_FLAG      0x40
@@ -57,8 +56,8 @@ int main(int argc, char** argv){
 
   // set argv
   char *interface = argv[1];    
-   char *dst_addr = "ff02::1";
-   // char *dst_addr = "fe80::9fd6:68ca:13cc:bbe2";
+  // char *dst_addr = "ff02::1";
+  char *dst_addr = "fe80::9fd6:68ca:13cc:bbe2";
   char *src_addr = argv[2];
   char *dns_addr = argv[3];
 
@@ -87,7 +86,7 @@ int main(int argc, char** argv){
   int rdnss_len = build_icmpv6_rdnss_opt(l, &rdnss, LIFETIME_INF, dns_addr);
 
   uint8_t* mtu;
-  int mtu_len = build_icmpv6_mtu_opt(l, &mtu, 0xaabbccdd);  
+  int mtu_len = build_icmpv6_mtu_opt(l, &mtu, 1500);  
 
   uint8_t* link;
   int link_len = build_icmpv6_src_link_addr_opt(l, &link, "\xaa\xbb\xcc\xdd\xee\xff");
@@ -97,8 +96,8 @@ int main(int argc, char** argv){
 					   &prefix,
 					   64,
 					   ND_OPT_PREFIX_L_FLAG + ND_OPT_PREFIX_A_FLAG,
-					   0xaabbccdd,
-					   0x11223344,
+					   2592000,
+					   604800,
 					   "2001:db8:ffff::");
 
   uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len + link_len + prefix_len);
@@ -126,9 +125,9 @@ int main(int argc, char** argv){
 		      0, // checksum
 		      64, // hop limit
 		      ND_RA_MANAGED_CONFIG_FLAG + ND_RA_OTHER_CONFIG_FLAG, // flags
-		      LIFETIME_INF, // lifetime
-		      1, // reachable time
-		      2, // retransmission
+		      1800, // lifetime
+		      0, // reachable time
+		      0, // retransmission
 		      payload, // payload
 		      payload_s, // payload_s
 		      l,
