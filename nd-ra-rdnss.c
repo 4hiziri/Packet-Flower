@@ -52,21 +52,21 @@ int build_icmpv6_prefix_opt(libnet_t* l,
 			    const char* prefix);
 
 // for option
-#define ICMPV6       0x00
-#define ICMPV6_HL    0x01 // hop limit
-#define ICMPV6_OF 0x02 // o flag
-#define ICMPV6_MF 0x03 // m flag
-#define ICMPV6_LT 0x04 // life time
-#define ICMPV6_RT 0x05 // reachable time
-#define ICMPV6_RE 0x06 // retransmission time
-#define OPT_LINK   0x10
-#define OPT_MTU    0x20
-#define OPT_PREFIX 0x40
+#define ICMPV6        0x00
+#define ICMPV6_HL     0x01 // hop limit
+#define ICMPV6_OF     0x02 // o flag
+#define ICMPV6_MF     0x03 // m flag
+#define ICMPV6_LT     0x04 // life time
+#define ICMPV6_RT     0x05 // reachable time
+#define ICMPV6_RE     0x06 // retransmission time
+#define OPT_LINK      0x10
+#define OPT_MTU       0x20
+#define OPT_PREFIX    0x40
 #define OPT_PREFIX_LF 0x41 // L flag
 #define OPT_PREFIX_AF 0x42 // A flag
 #define OPT_PREFIX_VT 0x43 // valid time
 #define OPT_PREFIX_PT 0x44 // prefered time
-#define OPT_RDNSS  0x80
+#define OPT_RDNSS     0x80
 #define OPT_RDNSS_LT  0x81 // life time
 int options = 0;
 
@@ -104,23 +104,23 @@ int options = 0;
  * --p-prefer prefix prefered lifetime
  */
 int main(int argc, char** argv){
-  uint8_t icmpv6_hop_limit = 0;
-  uint8_t icmpv6_flags = 0;
-  uint16_t icmpv6_lifetime = 0;
+  uint8_t  icmpv6_hop_limit = 0;
+  uint8_t  icmpv6_flags     = 0;
+  uint16_t icmpv6_lifetime  = 0;
   uint32_t icmpv6_reachable = 0;
-  uint32_t icmpv6_retrans = 0;
+  uint32_t icmpv6_retrans   = 0;
 
-  char* rdnss_dns_addr = NULL;
+  char*    rdnss_dns_addr = NULL;
   uint32_t rdnss_lifetime = 0; // set default to inf later
 
   uint32_t mtu_mtu = 0;
 
   char* link_addr = NULL;
 
-  char* prefix_prefix = NULL;
-  uint8_t prefix_prefix_len = 0;
-  uint8_t prefix_flags = 0;
-  uint32_t prefix_valid_lifetime = 0;
+  char*    prefix_prefix            = NULL;
+  uint8_t  prefix_prefix_len        = 0;
+  uint8_t  prefix_flags             = 0;
+  uint32_t prefix_valid_lifetime    = 0;
   uint32_t prefix_prefered_lifetime = 0;
 
   /**********
