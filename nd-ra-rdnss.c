@@ -57,7 +57,8 @@ int main(int argc, char** argv){
 
   // set argv
   char *interface = argv[1];    
-  char *dst_addr = "ff02::1";
+   char *dst_addr = "ff02::1";
+   // char *dst_addr = "fe80::9fd6:68ca:13cc:bbe2";
   char *src_addr = argv[2];
   char *dns_addr = argv[3];
 
@@ -98,11 +99,12 @@ int main(int argc, char** argv){
 					   ND_OPT_PREFIX_L_FLAG + ND_OPT_PREFIX_A_FLAG,
 					   0xaabbccdd,
 					   0x11223344,
-					   "2001:db8::");
+					   "2001:db8:ffff::");
 
   uint8_t* payload = (uint8_t*)malloc(rdnss_len + mtu_len + link_len + prefix_len);
   int payload_s = 0;
 
+  // TODO: extract as func here
   for (int i = 0; i < rdnss_len; i++) payload[payload_s + i] = rdnss[i];
   payload_s += rdnss_len;
   
@@ -156,8 +158,7 @@ int main(int argc, char** argv){
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
     }
-    break;
-
+    // break;
     sleep(1);
   }
 
