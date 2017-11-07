@@ -48,18 +48,58 @@ int build_icmpv6_prefix_opt(libnet_t* l,
 			    uint32_t prefered_lifetime,			     
 			    const char* prefix);
 
-int main(int argc, char** argv){
-  if (argc != 4) {
-    fprintf(stderr, "%s <interface> <src addr> <dns addr>\n", argv[0]);
+#define OPT_LINX   0x1
+#define OPT_MTU    0x2
+#define OPT_PREFIX 0x4
+#define OPT_RDNSS  0x8
+
+int options = 0;
+
+/**
+ * CMD inteface src dst <option>
+ * interface: NIC
+ * src: source adderss
+ * dst: distination address
+ *
+ * router advertisement param
+ * --hop-limit hop limit
+ * -o other flag
+ * -m managed flag
+ * --lifetime lifetime
+ * --reachable reachable time
+ * --retrans retransmission time
+ *
+ * ra option param
+ *
+ * rdnss
+ * -r use rdnss option: dns address
+ * --r-lifetime rdnss lifetime
+ *
+ * mtu
+ * -m use mtu option: mtu
+ *
+ * link
+ * -l use link option: link address
+ *
+ * prefix
+ * -p use prefix option: prefix addr and length like 2001:db8::/64
+ * --p-l prefix l flag
+ * --p-a prefix a flag
+ * --p-valid prefix valid lifetime
+ * --p-prefer prefix prefered lifetime
+ */
+int main(int argc, char** argv){   
+  if (argc < 4) {
+    fprintf(stderr, "%s interface src-addr dst-addr <options>\n", argv[0]);
     exit(1);
-  }
+  }  
 
   // set argv
   char *interface = argv[1];    
   // char *dst_addr = "ff02::1";
-  char *dst_addr = "fe80::9fd6:68ca:13cc:bbe2";
-  char *src_addr = argv[2];
-  char *dns_addr = argv[3];
+  // "fe80::9fd6:68ca:13cc:bbe2";
+  char *dst_addr = argv[2];
+  char *src_addr = argv[3];
 
   libnet_t *l;
   libnet_in6_addr sip, dip;
