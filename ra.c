@@ -104,7 +104,7 @@ int options = 0;
  * --p-prefer prefix prefered lifetime
  */
 int main(int argc, char** argv){
-  int count = 1;
+  int count = -1;
   int interval = 1000000; // this mean mili sec.
   uint8_t  icmpv6_hop_limit = 0; // 0 means this ra doesn't have hop limit.
   uint8_t  icmpv6_flags     = 0;
@@ -191,7 +191,7 @@ int main(int argc, char** argv){
 
       char* addr = strtok(optarg, ":");
       link_addr[0] = strtol(addr, NULL, 16);;
-            
+
       for (int i = 1; i < 6; i++){
 	link_addr[i] = strtol(strtok(NULL, ":"), NULL, 16);
       }
@@ -233,12 +233,12 @@ int main(int argc, char** argv){
       exit(1);
     }
   }
-  
-  if ((argc - optind) < 4) {
+
+  if ((argc - optind) != 3) {
     fprintf(stderr, "%s interface dst-addr src-addr <options>\n", argv[0]);
     exit(1);
   }
-  
+
   // set argv
   char *interface = argv[optind];
   // char *dst_addr = "ff02::1";
@@ -337,11 +337,11 @@ int main(int argc, char** argv){
 		    0                 // libnet_ptag_t ptag
 		    );
 
-  for (int i = 0; i < count; i++) {
-    if(libnet_write(l) == -1) {
+  for (int i = 0; i != count; i++) {
+    if (libnet_write(l) == -1) {
       printf("libnet_write: %s\n", libnet_geterror(l));
       exit(1);
-    }   
+    }
     usleep(interval);
   }
 
