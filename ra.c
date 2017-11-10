@@ -98,8 +98,8 @@ int options = 0;
  *
  * prefix
  * -p use prefix option: prefix addr and length like 2001:db8::/64
- * --p-l prefix l flag
- * --p-a prefix a flag
+ * --pl prefix l flag
+ * --pa prefix a flag
  * --p-valid prefix valid lifetime
  * --p-prefer prefix prefered lifetime
  */
