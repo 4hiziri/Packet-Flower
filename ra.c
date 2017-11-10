@@ -78,8 +78,8 @@ int options = 0;
  *
  * router advertisement param
  * --hop-limit hop limit
- * -fo other flag
- * -fm managed flag
+ * -of other flag
+ * -mf managed flag
  * --lifetime lifetime
  * --reachable reachable time
  * --retrans retransmission time
