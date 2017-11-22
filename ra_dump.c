@@ -6,7 +6,7 @@ int main(int argc, char** argv){
   char* dev = argv[1];
   char err_buf[1024];
   struct bpf_program fp;
-  bpf_u_int32 net, mask; // ip addr? mask
+  bpf_u_int32 net, mask; // ip addr? mask  
 
   if ( pcap_lookupnet(dev, &net, &mask, err_buf) == -1 ) {
     fprintf(stderr, "can't get mask error\n");
@@ -39,6 +39,13 @@ int main(int argc, char** argv){
     fprintf(stderr, "can't filter\n");
     exit(1);
   }
+
+  // get flag
+  struct pcap_pkthdr header;
+  const u_char packet = pcap_next(handle, &header);
+  // data is in header
+
+  pcap_close(handle);
   
-  return 0;
+  return 0;  
 }
