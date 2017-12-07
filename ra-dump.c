@@ -27,7 +27,7 @@ int main(int argc, char** argv){
 
   if ( pcap_compile(handle, // pcap_t
 		    &fp, // compiled_exp
-		    "",
+		    "icmp[icmptype] == 8",
 		    0, // optimized_p
 		    net // netmask
 		    ) == -1 ) {
@@ -40,13 +40,17 @@ int main(int argc, char** argv){
     exit(1);
   }
 
-  const u_char *packet;
+  const u_char *packet = NULL;
   struct pcap_pkthdr header;
-  
-  packet = pcap_next(handle, &header);
 
-  printf("%d", header.len);
+  while(packet == NULL){
+    packet = pcap_next(handle, &header);     
+  }
+
+  printf("%d\n", header.len);
+  printf("%d\n", packet[0]);
 
   pcap_close(handle);
+  
   return 0;
 }
