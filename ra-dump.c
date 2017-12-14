@@ -11,7 +11,7 @@ int main(int argc, char** argv){
   if ( pcap_lookupnet(dev, &net, &mask, err_buf) == -1 ) {
     fprintf(stderr, "can't get mask error\n");
     net = 0;
-    mask = 0;    
+    mask = 0;
   }
 
   pcap_t *handle = pcap_open_live(dev, // device
@@ -44,13 +44,15 @@ int main(int argc, char** argv){
   struct pcap_pkthdr header;
 
   while(packet == NULL){
-    packet = pcap_next(handle, &header);     
+    packet = pcap_next(handle, &header);
   }
 
+  printf("%d\n", header.caplen);
   printf("%d\n", header.len);
-  printf("%d\n", packet[0]);
+  for(int i = 0; i < header.caplen; i++)
+    printf("%x\n", packet[i]);
 
   pcap_close(handle);
-  
+
   return 0;
 }
