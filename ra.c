@@ -260,7 +260,7 @@ int main(int argc, char** argv){
   // get ipv6-addr struct
   sip = libnet_name2addr6(l, src_addr, LIBNET_DONT_RESOLVE);
   dip = libnet_name2addr6(l, dst_addr, LIBNET_DONT_RESOLVE);
-
+ 
   /*********************************
    *   Build router advertisement  *
    *********************************/
@@ -303,7 +303,10 @@ int main(int argc, char** argv){
   for (int i = 0; i < prefix_len; i++) payload[payload_s + i] = prefix[i];
   payload_s += prefix_len;
 
-  free(rdnss); free(mtu); free(link); free(prefix); // ok? free(NULL);
+  if (!rdnss) free(rdnss);
+  if (!mtu) free(mtu);
+  if (!link) free(link);
+  if (!prefix) free(prefix);
 
   build_icmpv6_ndp_ra(ND_ROUTER_ADVERT, // type
 		      0,                // code
