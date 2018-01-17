@@ -1,15 +1,14 @@
-#/usr/bin/python3
+#!/usr/bin/python3
 
 import gi
 gi.require_version('NM', '1.0')
 from gi.repository import NM
-import dpkt
-from scapy.all import sr1, IP, IPv6, UDP, DNS, DNSQR, ls
+from scapy.all import sr1, IP, IPv6, UDP, DNS, DNSQR
 
 
 def info(interface):
     print("package test")
-    
+
     test_domain = 'www.google.com'
     client = NM.Client.new(None)
     dev = client.get_device_by_iface(interface)
@@ -83,5 +82,8 @@ def main(interface):
 
 
 if __name__ == '__main__':
-    info('wlp2s0')
-    # main('wlp2s0')
+    import sys
+
+    interface = sys.argv[1]
+    info(interface)
+    # main(interface)
