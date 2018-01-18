@@ -3,7 +3,7 @@
 import gi
 gi.require_version('NM', '1.0')
 from gi.repository import NM
-from scapy.all import sr1, IP, IPv6, UDP, DNS, DNSQR
+from scapy.all import sr1, IP, IPv6, UDP, DNS, DNSQR, Ether
 
 
 def info(interface):
@@ -41,9 +41,12 @@ def info(interface):
 
 
 def dnsv6_request(nameserver, domain_name):
-    payload = IPv6(dst=nameserver)
-    payload /= UDP(dport=53)
-    payload /= DNS(rd=1, qd=DNSQR(qname=domain_name))
+    transaction_id = 0x3d3d
+
+    payload = Ether(dst="cc:d5:39:dc:01:c1")
+    payload /= IPv6(dst=nameserver)
+    payload /= UDP(sport=47516, dport=53)
+    payload /= DNS(id=transaction_id, rd=1, qd=DNSQR(qname=domain_name, qtype='AAAA'))
     return sr1(payload, verbose=0)
 
 
@@ -85,5 +88,5 @@ if __name__ == '__main__':
     import sys
 
     interface = sys.argv[1]
-    info(interface)
-    # main(interface)
+    # info(interface)
+    main(interface)
