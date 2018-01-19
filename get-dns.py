@@ -40,14 +40,14 @@ def info(interface):
         print("DNS reply: {}".format(dns_rep['DNS'].ar[i].rdata))
 
 
-def dnsv6_request(nameserver, domain_name):
+def dnsv6_request(nameserver, domain_name, iface):
     transaction_id = 0x3d3d
 
-    payload = Ether(dst="cc:d5:39:dc:01:c1")
-    payload /= IPv6(dst=nameserver)
+    # payload = Ether(dst="cc:d5:39:dc:01:c1")
+    payload = IPv6(dst=nameserver)
     payload /= UDP(sport=47516, dport=53)
     payload /= DNS(id=transaction_id, rd=1, qd=DNSQR(qname=domain_name, qtype='AAAA'))
-    return sr1(payload, verbose=0)
+    return sr1(payload, verbose=0, iface=iface)
 
 
 def get_v6_nameservers(interface):
@@ -68,12 +68,12 @@ def check_ipv6(ips_list):
     return True
 
 
-def main(interface):
+def main(interface, domain):
     nameservers = get_v6_nameservers(interface)
     results = []
 
     for nameserver in nameservers:
-        rep = dnsv6_request(nameserver, 'www.google.com')
+        rep = dnsv6_request(nameserver, domain, interface)
         tmp = []
 
         for i in range(rep['DNS'].arcount):
@@ -88,5 +88,6 @@ if __name__ == '__main__':
     import sys
 
     interface = sys.argv[1]
+    domain = sys.argv[2]
     # info(interface)
-    main(interface)
+    main(interface, domain)
