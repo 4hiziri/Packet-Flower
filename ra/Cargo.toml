@@ -1,0 +1,9 @@
+[package]
+name = "ra"
+version = "0.1.0"
+authors = ["tkgsy <meirvg@gmail.com>"]
+
+[dependencies]
+getopts = "0.2"
+[dependencies.pnet]
+version = "0.20.0"
