@@ -1,11 +1,3 @@
-[root]
-name = "ra"
-version = "0.1.0"
-dependencies = [
- "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "pnet 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
 [[package]]
 name = "aho-corasick"
 version = "0.6.4"
@@ -162,6 +154,14 @@ dependencies = [
  "pnet_base 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pnet_packet 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "pnet_sys 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ra"
+version = "0.1.0"
+dependencies = [
+ "getopts 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pnet 0.20.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

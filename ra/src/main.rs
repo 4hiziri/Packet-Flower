@@ -18,15 +18,25 @@ fn build_ndpopt_src_link_addr(link_addr: MacAddr) -> NdpOption {
 
     NdpOption {
         option_type: ndp::NdpOptionTypes::SourceLLAddr,
-        length: 0, // TODO: auto-complete or not?
+        length: 1, // if MAC addr, length is 1
         data: data,
     }
 }
 
-fn build_ndpopt_prefix() -> NdpOption {
+fn build_ndpopt_prefix(
+    prefix_len: u8,
+    l_flag: bool,
+    a_flag: bool,
+    valid_time: u32,
+    ref_time: u32,
+    prefix: String, // to IPv6 addr
+) -> NdpOption {
+    let flag = if l_flag { 0x80 } else { 0 } | if a_flag { 0x40 } else { 0 };
+    let data: Vec<u8> = Vec::new();
+
     NdpOption {
         option_type: ndp::NdpOptionTypes::PrefixInformation,
-        length: 0,
+        length: 4,
         data: Vec::new(),
     }
 }
