@@ -41,10 +41,11 @@ fn build_ndpopt_prefix(
     }
 }
 
-fn build_ndpopt_mtu() -> NdpOption {
+fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
+    // u32 -> u8 data
     NdpOption {
         option_type: ndp::NdpOptionTypes::MTU,
-        length: 0,
+        length: 1,
         data: Vec::new(),
     }
 }
