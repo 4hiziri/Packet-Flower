@@ -50,8 +50,8 @@ fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
     }
 }
 
-// research
-fn build_ndpopt_rdnss() -> NdpOption {
+// TODO: String -> v6addr
+fn build_ndpopt_rdnss(dns_servers: Vec<String>) -> NdpOption {
     let rdnss = ndp::NdpOptionType::new(0x19);
 
     NdpOption {
