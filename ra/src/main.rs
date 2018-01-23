@@ -14,13 +14,6 @@ use pnet::packet::icmpv6::ndp::NdpOption;
 use pnet::util::Octets;
 
 
-fn push_big_endian(vec: &mut Vec<u8>, num: u32) {
-    for &big_endian in num.octets().iter() {
-        vec.push(big_endian);
-    }
-}
-
-
 // MacAddr::from_str();
 fn build_ndpopt_src_link_addr(link_addr: MacAddr) -> NdpOption {
     let MacAddr(a1, a2, a3, a4, a5, a6) = link_addr;
@@ -46,11 +39,8 @@ fn build_ndpopt_prefix(
 
     data.push(prefix_len);
     data.push(flag);
-
-    data.append(valid_time.octets());
-    push_big_endian(&mut data, valid_time);
-    push_big_endian(&mut data, ref_time);
-
+    data.append(&mut valid_time.octets().iter().cloned().collect());
+    data.append(&mut ref_time.octets().iter().cloned().collect());
 
     NdpOption {
         option_type: ndp::NdpOptionTypes::PrefixInformation,
