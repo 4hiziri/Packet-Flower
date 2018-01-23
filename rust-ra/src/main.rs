@@ -51,22 +51,26 @@ fn build_ndpopt_prefix(
 }
 
 fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
-    // u32 -> u8 data
     NdpOption {
         option_type: ndp::NdpOptionTypes::MTU,
         length: 1,
-        data: Vec::new(),
+        data: mtu.octets().iter().cloned().collect(),
     }
 }
 
-// TODO: String -> v6addr
-fn build_ndpopt_rdnss(dns_servers: Vec<String>) -> NdpOption {
+fn build_ndpopt_rdnss(dns_servers: Vec<Ipv6Addr>) -> NdpOption {
     let rdnss = ndp::NdpOptionType::new(0x19);
+    let mut data: Vec<u8> = Vec::new();
+    let length: u8 = 2 + dns_servers.len() as u8;
+
+    for server in dns_servers {
+        data.append(&mut server.octets().iter().cloned().collect());
+    }
 
     NdpOption {
         option_type: rdnss,
-        length: 0,
-        data: Vec::new(),
+        length: length,
+        data: data,
     }
 }
 
