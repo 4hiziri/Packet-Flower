@@ -41,6 +41,7 @@ fn build_ndpopt_prefix(
     data.push(flag);
     data.append(&mut valid_time.octets().iter().cloned().collect());
     data.append(&mut ref_time.octets().iter().cloned().collect());
+    data.append(&mut prefix.octets().iter().cloned().collect());
 
     NdpOption {
         option_type: ndp::NdpOptionTypes::PrefixInformation,
