@@ -23,7 +23,7 @@ use pnet::util::Octets;
 /// let src_addr_opt = build_ndpopt_src_link_addr(MacAddr::from_str("aa:bb:cc:dd:ee:ff"));
 /// ```
 fn build_ndpopt_src_link_addr(link_addr: MacAddr) -> NdpOption {
-    let mut buf = Vec::new();
+    let mut buf = [0; 16];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let MacAddr(a1, a2, a3, a4, a5, a6) = link_addr;
 
@@ -54,7 +54,7 @@ fn build_ndpopt_prefix(
     ref_time: u32,
     prefix: Ipv6Addr,
 ) -> NdpOption {
-    let mut buf = Vec::new();
+    let mut buf = [0; 40];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let mut data: Vec<u8> = Vec::new();
     let flag = if l_flag { 0x80 } else { 0 } | if a_flag { 0x40 } else { 0 };
@@ -80,7 +80,7 @@ fn build_ndpopt_prefix(
 /// let mtu = build_ndpopt_mtu(64);
 /// ```
 fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
-    let mut buf: Vec<u8> = Vec::with_capacity(40);
+    let mut buf = [0; 16];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
 
     ndpopt.set_option_type(ndp::NdpOptionTypes::MTU);
@@ -102,10 +102,11 @@ fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
 /// let rdnss = build_ndpopt_rdnss(dns, 1800);
 /// ```
 fn build_ndpopt_rdnss(lifetime: u32, dns_servers: Vec<Ipv6Addr>) -> NdpOption {
-    let mut buf = Vec::new();
+    let mut buf = [0; 80];
+    // assert, limited size
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let rdnss = ndp::NdpOptionType::new(0x19);
-    let length: u8 = 2 + dns_servers.len() as u8;
+    let length: u8 = 3 + dns_servers.len() as u8;
     let mut data: Vec<u8> = Vec::new();
 
     ndpopt.set_option_type(rdnss);
@@ -117,7 +118,7 @@ fn build_ndpopt_rdnss(lifetime: u32, dns_servers: Vec<Ipv6Addr>) -> NdpOption {
         data.append(&mut server.octets().iter().cloned().collect());
     }
 
-    ndpopt.set_data(&data);
+    ndpopt.set_data(data.as_slice());
 
     ndpopt.from_packet()
 }
@@ -178,5 +179,5 @@ fn main() {
     rt_advt.set_retrans_time(1800);
     rt_advt.set_options(&ndp_opts);
 
-    tx.send_to(rt_advt.packet(), None);
+    tx.send_to(rt_advt.packet(), Some(interface));
 }
