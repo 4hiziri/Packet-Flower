@@ -386,7 +386,7 @@ int build_icmpv6_rdnss_opt(libnet_t* l,
 
   tmp.u32[0] = lifetime;
 
-  for(int i = 0; i < 4; i++) (*payload)[4 + i] = tmp.u8[i];
+  for(int i = 0; i < 4; i++) (*payload)[4 + 3 - i] = tmp.u8[i];
 
   for (int i = 0; i < 16; i++)
     (*payload)[8 + i] = libnet_name2addr6(l, dns_addr, LIBNET_DONT_RESOLVE).__u6_addr.__u6_addr8[i];
