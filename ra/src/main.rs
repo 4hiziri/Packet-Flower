@@ -18,29 +18,40 @@ fn build_ndpopt_src_link_addr(link_addr: MacAddr) -> NdpOption {
 
     NdpOption {
         option_type: ndp::NdpOptionTypes::SourceLLAddr,
-        length: 0, // TODO: auto-complete or not?
+        length: 1, // if MAC addr, length is 1
         data: data,
     }
 }
 
-fn build_ndpopt_prefix() -> NdpOption {
+fn build_ndpopt_prefix(
+    prefix_len: u8,
+    l_flag: bool,
+    a_flag: bool,
+    valid_time: u32,
+    ref_time: u32,
+    prefix: String, // to IPv6 addr
+) -> NdpOption {
+    let flag = if l_flag { 0x80 } else { 0 } | if a_flag { 0x40 } else { 0 };
+    let data: Vec<u8> = Vec::new();
+
     NdpOption {
         option_type: ndp::NdpOptionTypes::PrefixInformation,
-        length: 0,
+        length: 4,
         data: Vec::new(),
     }
 }
 
-fn build_ndpopt_mtu() -> NdpOption {
+fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
+    // u32 -> u8 data
     NdpOption {
         option_type: ndp::NdpOptionTypes::MTU,
-        length: 0,
+        length: 1,
         data: Vec::new(),
     }
 }
 
-// research
-fn build_ndpopt_rdnss() -> NdpOption {
+// TODO: String -> v6addr
+fn build_ndpopt_rdnss(dns_servers: Vec<String>) -> NdpOption {
     let rdnss = ndp::NdpOptionType::new(0x19);
 
     NdpOption {
