@@ -2,7 +2,7 @@ extern crate getopts;
 extern crate pnet;
 use getopts::Options;
 use std::env;
-use std::net::Ipv6Addr;
+use std::net::{Ipv6Addr, IpAddr};
 use std::str::FromStr;
 use pnet::datalink::{self, NetworkInterface, MacAddr};
 use pnet::datalink::Channel::Ethernet;
@@ -14,6 +14,9 @@ use pnet::packet::icmpv6::ndp;
 use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket};
 use pnet::packet::icmpv6::ndp::NdpOption;
 use pnet::util::Octets;
+use pnet::transport::TransportChannelType::Layer4;
+use pnet::transport::transport_channel;
+use pnet::transport::TransportProtocol::Ipv6;
 
 
 /// Return IPv6 NDP option source link address
@@ -127,6 +130,7 @@ fn build_ndpopt_rdnss(lifetime: u32, dns_servers: Vec<Ipv6Addr>) -> NdpOption {
 fn main() {
     let interface_name = env::args().nth(1).unwrap(); // interface name
     let interface_names_match = |iface: &NetworkInterface| iface.name == interface_name;
+    let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
 
     // Find the network interface with the provided name
     let interfaces = datalink::interfaces();
@@ -136,17 +140,7 @@ fn main() {
         .next()
         .unwrap();
 
-    // Create a new channel, dealing with layer 2 packets
-    let (mut tx, _) = match datalink::channel(&interface, Default::default()) {
-        Ok(Ethernet(tx, rx)) => (tx, rx), // tx = sender, rx = receiver
-        Ok(_) => panic!("Unhandled channel type"),
-        Err(e) => {
-            panic!(
-                "An error occurred when creating the datalink channel: {}",
-                e
-            )
-        }
-    };
+    let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     let mut buf = [0; 1024];
     let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
@@ -180,11 +174,18 @@ fn main() {
     rt_advt.set_retrans_time(1800);
     rt_advt.set_options(&ndp_opts);
 
-    let mut buf = [0; 1024];
-    let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
-    ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
-    ipv6.set_destination(Ipv6Addr::from_str("2001:db8:5::1").unwrap());
-    ipv6.set_payload(rt_advt.packet());
+    // let mut buf = [0; 2048];
+    // let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
 
-    tx.send_to(ipv6.packet(), Some(interface)).unwrap();
+    // ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
+    // ipv6.set_destination(Ipv6Addr::from_str("2001:db8:5::1").unwrap());
+    // // ipv6.set_payload(&rt_advt.packet());
+    // ipv6.set_payload(&[]);
+
+    // tx.send_to(ipv6.packet(), Some(interface)).unwrap().unwrap();
+
+    tx.send_to(
+        rt_advt,
+        IpAddr::from(Ipv6Addr::from_str("2001:db8:10::1").unwrap()),
+    ).unwrap();
 }
