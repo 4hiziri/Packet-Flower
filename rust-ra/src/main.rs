@@ -7,6 +7,7 @@ use std::str::FromStr;
 use pnet::datalink::{self, NetworkInterface, MacAddr};
 use pnet::datalink::Channel::Ethernet;
 use pnet::packet::Packet;
+use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::icmpv6;
 use pnet::packet::FromPacket;
 use pnet::packet::icmpv6::ndp;
@@ -147,7 +148,7 @@ fn main() {
         }
     };
 
-    let mut buf = [0; 2048];
+    let mut buf = [0; 1024];
     let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
     let mut ndp_opts = Vec::new();
     ndp_opts.push(build_ndpopt_mtu(64));
@@ -179,5 +180,11 @@ fn main() {
     rt_advt.set_retrans_time(1800);
     rt_advt.set_options(&ndp_opts);
 
-    tx.send_to(rt_advt.packet(), Some(interface));
+    let mut buf = [0; 1024];
+    let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
+    ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
+    ipv6.set_destination(Ipv6Addr::from_str("2001:db8:5::1").unwrap());
+    ipv6.set_payload(rt_advt.packet());
+
+    tx.send_to(ipv6.packet(), Some(interface)).unwrap();
 }
