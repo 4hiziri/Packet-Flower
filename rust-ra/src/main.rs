@@ -12,12 +12,11 @@ use pnet::packet::icmpv6;
 use pnet::packet::FromPacket;
 use pnet::packet::icmpv6::ndp;
 use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket};
-use pnet::packet::icmpv6::ndp::NdpOption;
+use pnet::packet::icmpv6::ndp::{NdpOption, NdpOptionType};
 use pnet::util::Octets;
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::transport_channel;
 use pnet::transport::TransportProtocol::Ipv6;
-
 
 /// Return IPv6 NDP option source link address
 /// #Arguments
@@ -27,12 +26,13 @@ use pnet::transport::TransportProtocol::Ipv6;
 /// let src_addr_opt = build_ndpopt_src_link_addr(MacAddr::from_str("aa:bb:cc:dd:ee:ff"));
 /// ```
 fn build_ndpopt_src_link_addr(link_addr: MacAddr) -> NdpOption {
-    let mut buf = [0; 16];
+    const length: u8 = 1;
+    let mut buf = [0; length as usize * 8];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let MacAddr(a1, a2, a3, a4, a5, a6) = link_addr;
 
     ndpopt.set_option_type(ndp::NdpOptionTypes::SourceLLAddr);
-    ndpopt.set_length(1);
+    ndpopt.set_length(length);
     ndpopt.set_data(&[a1, a2, a3, a4, a5, a6]);
 
     ndpopt.from_packet()
@@ -58,7 +58,8 @@ fn build_ndpopt_prefix(
     ref_time: u32,
     prefix: Ipv6Addr,
 ) -> NdpOption {
-    let mut buf = [0; 40];
+    const length: u8 = 4;
+    let mut buf = [0; length as usize * 8];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let mut data: Vec<u8> = Vec::new();
     let flag = if l_flag { 0x80 } else { 0 } | if a_flag { 0x40 } else { 0 };
@@ -67,10 +68,15 @@ fn build_ndpopt_prefix(
     data.push(flag);
     data.append(&mut valid_time.octets().iter().cloned().collect());
     data.append(&mut ref_time.octets().iter().cloned().collect());
+    // reserved
+    data.push(0);
+    data.push(0);
+    data.push(0);
+    data.push(0);
     data.append(&mut prefix.octets().iter().cloned().collect());
 
     ndpopt.set_option_type(ndp::NdpOptionTypes::PrefixInformation);
-    ndpopt.set_length(4);
+    ndpopt.set_length(length);
     ndpopt.set_data(&data);
 
     ndpopt.from_packet()
@@ -84,12 +90,20 @@ fn build_ndpopt_prefix(
 /// let mtu = build_ndpopt_mtu(64);
 /// ```
 fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
-    let mut buf = [0; 16];
+    const length: u8 = 1;
+    let mut buf = [0; length as usize * 8];
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
+    let mut data = Vec::new();
+
+    // reserved
+    data.push(0);
+    data.push(0);
+
+    data.append(&mut mtu.octets().iter().cloned().collect());
 
     ndpopt.set_option_type(ndp::NdpOptionTypes::MTU);
-    ndpopt.set_length(1);
-    ndpopt.set_data(&mtu.octets());
+    ndpopt.set_length(length);
+    ndpopt.set_data(&data);
 
     ndpopt.from_packet()
 }
@@ -106,16 +120,18 @@ fn build_ndpopt_mtu(mtu: u32) -> NdpOption {
 /// let rdnss = build_ndpopt_rdnss(dns, 1800);
 /// ```
 fn build_ndpopt_rdnss(lifetime: u32, dns_servers: Vec<Ipv6Addr>) -> NdpOption {
-    let mut buf = [0; 80];
-    // assert, limited size
+    let length: u8 = 1 + 2 * dns_servers.len() as u8;
+    let mut buf = Vec::new();
+    buf.resize(length as usize * 8, 0);
     let mut ndpopt = MutableNdpOptionPacket::new(&mut buf).unwrap();
     let rdnss = ndp::NdpOptionType::new(0x19);
-    let length: u8 = 3 + dns_servers.len() as u8;
     let mut data: Vec<u8> = Vec::new();
 
     ndpopt.set_option_type(rdnss);
     ndpopt.set_length(length);
 
+    // reserved
+    data.append(&mut [0u8; 2].iter().cloned().collect());
     data.append(&mut lifetime.octets().iter().cloned().collect());
 
     for server in dns_servers {
@@ -155,13 +171,15 @@ fn build_router_advert(
     rt_advt.set_options(&ndp_opts);
 }
 
+fn build_icmpv6_ipv6_packet() {}
+
 fn main() {
     let interface_name = env::args().nth(1).unwrap(); // interface name
     let interface = get_interface(&interface_name);
 
     // Create a new channel, dealing with layer 2 packets
-    let (mut tx, mut rx) = match datalink::channel(&interface, Default::default()) {
-        Ok(Ethernet(tx, rx)) => (tx, rx),
+    let mut tx = match datalink::channel(&interface, Default::default()) {
+        Ok(Ethernet(tx, _)) => tx,
         Ok(_) => panic!("Unhandled channel type"),
         Err(e) => {
             panic!(
@@ -175,8 +193,9 @@ fn main() {
     let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     // create router advert packet
-    let mut buf = [0; 104];
-    let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
+    let mut payload_len: u16 = MutableRouterAdvertPacket::minimum_packet_size() as u16;
+    println!("advt_min: {}", payload_len); // => 16
+
     let mut ndp_opts = Vec::new();
     ndp_opts.push(build_ndpopt_mtu(64));
     ndp_opts.push(build_ndpopt_prefix(
@@ -187,9 +206,11 @@ fn main() {
         3600,
         Ipv6Addr::from_str("2001:db8:1::1").unwrap(),
     ));
+
     ndp_opts.push(build_ndpopt_src_link_addr(
         MacAddr::from_str("aa:bb:cc:dd:ee:ff").unwrap(),
     ));
+
     ndp_opts.push(build_ndpopt_rdnss(
         1800,
         vec![
@@ -198,6 +219,20 @@ fn main() {
         ],
     ));
 
+    println!("mtu: {}", ndp_opts[0].length); // => 1
+    println!("prefix: {}", ndp_opts[1].length); // => 1
+    println!("src: {}", ndp_opts[2].length); // => 1
+    println!("rdnss: {}", ndp_opts[3].length); // => 1
+
+    payload_len += ndp_opts[0].length as u16;
+    payload_len += ndp_opts[1].length as u16;
+    payload_len += ndp_opts[2].length as u16;
+    payload_len += ndp_opts[3].length as u16;
+
+    println!("sum: {}", payload_len);
+
+    let mut buf = [0; 216]; // TODO: to vec
+    let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
     build_router_advert(
         &mut rt_advt,
         64,
@@ -207,6 +242,8 @@ fn main() {
         1800,
         ndp_opts,
     );
+
+    println!("rt_advt: {}", rt_advt.get_lifetime());
 
     // create ipv6 packet
     let mut buf = [0; 2048];
@@ -219,8 +256,12 @@ fn main() {
 
     // tx.send_to(ipv6.packet(), Some(interface)).unwrap().unwrap();
 
-    tx.send_to(
-        rt_advt,
-        IpAddr::from(Ipv6Addr::from_str("fe80::2e4d:54ff:fed1:caf3").unwrap()),
-    ).unwrap();
+    println!(
+        "send_size: {}",
+        tx.send_to(
+            rt_advt,
+            IpAddr::from(Ipv6Addr::from_str("::1").unwrap()),
+//        IpAddr::from(Ipv6Addr::from_str("fe80::2e4d:54ff:fed1:caf3").unwrap()),
+        ).unwrap()
+    );
 }
