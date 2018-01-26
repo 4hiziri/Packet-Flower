@@ -219,20 +219,16 @@ fn main() {
         ],
     ));
 
-    println!("mtu: {}", ndp_opts[0].length); // => 1
-    println!("prefix: {}", ndp_opts[1].length); // => 1
-    println!("src: {}", ndp_opts[2].length); // => 1
-    println!("rdnss: {}", ndp_opts[3].length); // => 1
+    payload_len += ndp_opts[0].length as u16 * 8;
+    payload_len += ndp_opts[1].length as u16 * 8;
+    payload_len += ndp_opts[2].length as u16 * 8;
+    payload_len += ndp_opts[3].length as u16 * 8;
 
-    payload_len += ndp_opts[0].length as u16;
-    payload_len += ndp_opts[1].length as u16;
-    payload_len += ndp_opts[2].length as u16;
-    payload_len += ndp_opts[3].length as u16;
-
-    println!("sum: {}", payload_len);
-
-    let mut buf = [0; 216]; // TODO: to vec
-    let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
+    // let mut buf = [0; 104]; // TODO: to vec
+    // let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
+    let mut buf = Vec::new();
+    buf.resize(payload_len as usize, 0);
+    let mut rt_advt = MutableRouterAdvertPacket::owned(buf).unwrap();
     build_router_advert(
         &mut rt_advt,
         64,
@@ -243,10 +239,9 @@ fn main() {
         ndp_opts,
     );
 
-    println!("rt_advt: {}", rt_advt.get_lifetime());
-
     // create ipv6 packet
     let mut buf = [0; 2048];
+
     let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
 
     ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
