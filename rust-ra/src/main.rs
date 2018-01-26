@@ -136,11 +136,28 @@ fn get_interface(interface_name: &str) -> NetworkInterface {
         .unwrap()
 }
 
+fn build_router_advert(
+    rt_advt: &mut MutableRouterAdvertPacket,
+    hop_limit: u8,
+    flag: u8,
+    lifetime: u16,
+    reachable_time: u32,
+    retrans_time: u32,
+    ndp_opts: Vec<NdpOption>,
+) {
+    rt_advt.set_icmpv6_type(icmpv6::Icmpv6Types::RouterAdvert);
+    rt_advt.set_icmpv6_code(ndp::Icmpv6Codes::NoCode);
+    rt_advt.set_hop_limit(hop_limit);
+    rt_advt.set_flags(flag);
+    rt_advt.set_lifetime(lifetime);
+    rt_advt.set_reachable_time(reachable_time);
+    rt_advt.set_retrans_time(retrans_time);
+    rt_advt.set_options(&ndp_opts);
+}
+
 fn main() {
     let interface_name = env::args().nth(1).unwrap(); // interface name
     let interface = get_interface(&interface_name);
-    let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
-    let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     // Create a new channel, dealing with layer 2 packets
     let (mut tx, mut rx) = match datalink::channel(&interface, Default::default()) {
@@ -153,6 +170,9 @@ fn main() {
             )
         }
     };
+
+    let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
+    let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     // create router advert packet
     let mut buf = [0; 104];
@@ -178,14 +198,15 @@ fn main() {
         ],
     ));
 
-    rt_advt.set_icmpv6_type(icmpv6::Icmpv6Types::RouterAdvert);
-    rt_advt.set_icmpv6_code(ndp::Icmpv6Codes::NoCode);
-    rt_advt.set_hop_limit(64);
-    rt_advt.set_flags(ndp::RouterAdvertFlags::OtherConf);
-    rt_advt.set_lifetime(1800);
-    rt_advt.set_reachable_time(1800);
-    rt_advt.set_retrans_time(1800);
-    rt_advt.set_options(&ndp_opts);
+    build_router_advert(
+        &mut rt_advt,
+        64,
+        ndp::RouterAdvertFlags::OtherConf,
+        1800,
+        1800,
+        1800,
+        ndp_opts,
+    );
 
     // create ipv6 packet
     let mut buf = [0; 2048];
