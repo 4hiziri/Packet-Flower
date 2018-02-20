@@ -6,6 +6,7 @@ use std::net::{Ipv6Addr, IpAddr};
 use std::str::FromStr;
 use pnet::datalink::{self, NetworkInterface, MacAddr};
 use pnet::datalink::Channel::Ethernet;
+use pnet::packet::ethernet::{MutableEthernetPacket, EtherType};
 use pnet::packet::Packet;
 use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::icmpv6;
@@ -143,8 +144,11 @@ fn build_ndpopt_rdnss(lifetime: u32, dns_servers: Vec<Ipv6Addr>) -> NdpOption {
     ndpopt.from_packet()
 }
 
+/// Find the network interface with the provided name
+///
+/// #Arguments
+/// `interface_name` - interface name. exp.) enp1s0, wlan1
 fn get_interface(interface_name: &str) -> NetworkInterface {
-    // Find the network interface with the provided name
     datalink::interfaces()
         .into_iter()
         .filter(|iface: &NetworkInterface| iface.name == interface_name)
@@ -190,7 +194,7 @@ fn main() {
     };
 
     let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
-    let (mut tx, _) = transport_channel(4096, protocol).unwrap();
+    // let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     // create router advert packet
     let mut payload_len: u16 = MutableRouterAdvertPacket::minimum_packet_size() as u16;
@@ -249,14 +253,23 @@ fn main() {
     // ipv6.set_payload(&rt_advt.packet());
     ipv6.set_payload(&[]);
 
+    // L2 ether
+    let mut buf = Vec::new();
+    let mut ether = MutableEthernetPacket::new(&mut buf).unwrap();
+    ether.set_ethertype(EtherType::new(0x86dd));
+    ether.set_destination(MacAddr::from_str("AA:AA:AA:AA:AA:AA").unwrap());
+    ether.set_source(MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap());
+    ether.set_payload(ipv6.payload());
+
+    tx.send_to(ether.packet(), Some(interface))
+        .unwrap()
+        .unwrap();
+
     // tx.send_to(ipv6.packet(), Some(interface)).unwrap().unwrap();
 
-    println!(
-        "send_size: {}",
-        tx.send_to(
-            rt_advt,
-            IpAddr::from(Ipv6Addr::from_str("::1").unwrap()),
-//        IpAddr::from(Ipv6Addr::from_str("fe80::2e4d:54ff:fed1:caf3").unwrap()),
-        ).unwrap()
-    );
+    // println!(
+    //     "send_size: {}",
+    //     tx.send_to(rt_advt, IpAddr::from(Ipv6Addr::from_str("::1").unwrap()))
+    //         .unwrap()
+    // );
 }
