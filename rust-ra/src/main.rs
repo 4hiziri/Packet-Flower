@@ -253,7 +253,6 @@ fn main() {
 
     // create ipv6 packet, L3
     let mut buf = [0; 512];
-
     let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
 
     ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
@@ -261,26 +260,18 @@ fn main() {
     ipv6.set_payload_length(ipv6_payload.len() as u16);
     ipv6.set_payload(&ipv6_payload);
 
-    // create ether packet, L2
-    let mut buf = [0; 1024];
-    let mut ether = ethernet::MutableEthernetPacket::new(&mut buf).unwrap();
-    ether.set_destination(MacAddr::from_str("aa:bb:cc:dd:ee:ff").unwrap());
-    ether.set_source(MacAddr::from_str("11:22:33:44:55:66").unwrap());
-    ether.set_ethertype(EtherTypes::Ipv6);
-    ether.set_payload(ipv6.packet());
-
-    println!("{:?}", ether.packet());
-    tx.send_to(ether.packet(), Some(interface))
-        .unwrap()
-        .unwrap();
-
     // L2 ether
-    let mut buf = Vec::new();
+    let length = MutableEthernetPacket::minimum_packet_size() + ipv6.payload().len();
+    let mut buf = Vec::new(); // TODO: set length at runtime
+    buf.resize(length as usize, 0);
     let mut ether = MutableEthernetPacket::new(&mut buf).unwrap();
+
     ether.set_ethertype(EtherType::new(0x86dd));
     ether.set_destination(MacAddr::from_str("AA:AA:AA:AA:AA:AA").unwrap());
     ether.set_source(MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap());
     ether.set_payload(ipv6.payload());
+
+    println!("{}", ether.packet().len());
 
     tx.send_to(ether.packet(), Some(interface))
         .unwrap()
