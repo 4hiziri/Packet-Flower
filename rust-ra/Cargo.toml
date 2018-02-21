@@ -5,5 +5,8 @@ authors = ["tkgsy <meirvg@gmail.com>"]
 
 [dependencies]
 getopts = "0.2"
+log = ''
+env_logger = ''
+
 [dependencies.pnet]
 version = "0.20.0"
