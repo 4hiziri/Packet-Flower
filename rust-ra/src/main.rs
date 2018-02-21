@@ -1,3 +1,4 @@
+// TODO: Fix libpnet
 extern crate getopts;
 extern crate pnet;
 use getopts::Options;
@@ -12,7 +13,9 @@ use pnet::packet::ipv6::MutableIpv6Packet;
 use pnet::packet::icmpv6;
 use pnet::packet::FromPacket;
 use pnet::packet::icmpv6::ndp;
-use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket};
+use pnet::packet::icmpv6::Icmpv6Packet;
+use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket,
+                                RouterAdvertPacket};
 use pnet::packet::icmpv6::ndp::NdpOption;
 use pnet::packet::ethernet;
 use pnet::packet::ethernet::EtherTypes;
@@ -20,6 +23,7 @@ use pnet::util::Octets;
 use pnet::transport::TransportChannelType::Layer4;
 use pnet::transport::transport_channel;
 use pnet::transport::TransportProtocol::Ipv6;
+use std::iter::FromIterator;
 
 /// Return IPv6 NDP option source link address
 /// #Arguments
@@ -177,14 +181,13 @@ fn build_router_advert(
     rt_advt.set_options(&ndp_opts);
 }
 
-fn build_icmpv6_ipv6_packet() {}
+fn convert_rtadvt_icmpv6(rt_advt_packet: &[u8]) -> Icmpv6Packet {
+    Icmpv6Packet::new(rt_advt_packet).unwrap()
+}
 
 fn main() {
     let interface_name = env::args().nth(1).unwrap(); // interface name
     let interface = get_interface(&interface_name);
-
-    let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
-    let (tx, _) = transport_channel(4096, protocol).unwrap();
 
     // Create a new channel, dealing with layer 2 packets
     let mut tx = match datalink::channel(&interface, Default::default()) {
@@ -198,8 +201,7 @@ fn main() {
         }
     };
 
-
-    let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
+    // let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
     // let (mut tx, _) = transport_channel(4096, protocol).unwrap();
 
     // create router advert packet
@@ -234,8 +236,6 @@ fn main() {
     payload_len += ndp_opts[2].length as u16 * 8;
     payload_len += ndp_opts[3].length as u16 * 8;
 
-    // let mut buf = [0; 104]; // TODO: to vec
-    // let mut rt_advt = MutableRouterAdvertPacket::new(&mut buf).unwrap();
     let mut buf = Vec::new();
     buf.resize(payload_len as usize, 0);
     let mut rt_advt = MutableRouterAdvertPacket::owned(buf).unwrap();
@@ -249,39 +249,45 @@ fn main() {
         ndp_opts,
     );
 
-    let ipv6_payload = rt_advt.packet();
+    // let ipv6_payload = rt_advt.packet();
 
     // create ipv6 packet, L3
-    let mut buf = [0; 512];
+    let ip_src = Ipv6Addr::from_str("2001:db8:10::1").unwrap();
+    let ip_dst = Ipv6Addr::from_str("2001:db8:5::1").unwrap();
+    let advt_packet = rt_advt.packet();
+    let cp_advt_packet = Vec::from_iter(advt_packet.to_owned());
+    let mut advt_packet = Vec::from_iter(advt_packet.to_owned());
+    let icmpv6_packet = convert_rtadvt_icmpv6(cp_advt_packet.as_slice());
+    let mut rt_advt = MutableRouterAdvertPacket::new(&mut advt_packet).unwrap();
+
+    rt_advt.set_checksum(icmpv6::checksum(&icmpv6_packet, ip_src, ip_dst));
+    let ipv6_payload = rt_advt.packet();
+    let mut buf = Vec::new();
+    buf.resize(
+        ipv6_payload.len() + MutableIpv6Packet::minimum_packet_size(),
+        0,
+    );
     let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
 
+    ipv6.set_version(0x6);
     ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
-    ipv6.set_destination(Ipv6Addr::from_str("2001:db8:5::1").unwrap());
+    ipv6.set_destination(ip_dst);
+    ipv6.set_source(ip_src);
     ipv6.set_payload_length(ipv6_payload.len() as u16);
     ipv6.set_payload(&ipv6_payload);
 
     // L2 ether
-    let length = MutableEthernetPacket::minimum_packet_size() + ipv6.payload().len();
-    let mut buf = Vec::new(); // TODO: set length at runtime
+    let length = MutableEthernetPacket::minimum_packet_size() + ipv6.packet().len();
+    let mut buf = Vec::new();
     buf.resize(length as usize, 0);
     let mut ether = MutableEthernetPacket::new(&mut buf).unwrap();
 
-    ether.set_ethertype(EtherType::new(0x86dd));
+    ether.set_ethertype(EtherType::new(0x86dd)); // IPv6
     ether.set_destination(MacAddr::from_str("AA:AA:AA:AA:AA:AA").unwrap());
     ether.set_source(MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap());
-    ether.set_payload(ipv6.payload());
-
-    println!("{}", ether.packet().len());
+    ether.set_payload(ipv6.packet());
 
     tx.send_to(ether.packet(), Some(interface))
         .unwrap()
         .unwrap();
-
-    // tx.send_to(ipv6.packet(), Some(interface)).unwrap().unwrap();
-
-    // println!(
-    //     "send_size: {}",
-    //     tx.send_to(rt_advt, IpAddr::from(Ipv6Addr::from_str("::1").unwrap()))
-    //         .unwrap()
-    // );
 }
