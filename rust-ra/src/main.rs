@@ -1,4 +1,7 @@
 // TODO: Fix libpnet
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 extern crate getopts;
 extern crate pnet;
 use getopts::Options;
@@ -75,7 +78,7 @@ fn build_ndpopt_prefix(
     data.push(flag);
     data.append(&mut valid_time.octets().iter().cloned().collect());
     data.append(&mut ref_time.octets().iter().cloned().collect());
-    // reserved
+    // reserved field
     data.push(0);
     data.push(0);
     data.push(0);
@@ -162,15 +165,30 @@ fn get_interface(interface_name: &str) -> NetworkInterface {
         .unwrap()
 }
 
-fn build_router_advert(
-    rt_advt: &mut MutableRouterAdvertPacket,
+fn build_router_advert<'a>(
     hop_limit: u8,
     flag: u8,
     lifetime: u16,
     reachable_time: u32,
     retrans_time: u32,
     ndp_opts: Vec<NdpOption>,
-) {
+    source: Ipv6Addr,
+    destination: Ipv6Addr,
+) -> MutableRouterAdvertPacket<'a> {
+    let payload_len: usize = ndp_opts
+        .as_slice()
+        .into_iter()
+        .map(|opt| opt.length as usize)
+        .fold(
+            MutableRouterAdvertPacket::minimum_packet_size() as usize,
+            |acc, len| acc + len * 8,
+        );
+
+    let mut buf = Vec::with_capacity(payload_len);
+    buf.resize(payload_len, 0);
+    let mut rt_advt = MutableRouterAdvertPacket::owned(buf).unwrap();
+    debug!("build_router_advert: advert payload len is {}", payload_len);
+
     rt_advt.set_icmpv6_type(icmpv6::Icmpv6Types::RouterAdvert);
     rt_advt.set_icmpv6_code(ndp::Icmpv6Codes::NoCode);
     rt_advt.set_hop_limit(hop_limit);
@@ -179,6 +197,49 @@ fn build_router_advert(
     rt_advt.set_reachable_time(reachable_time);
     rt_advt.set_retrans_time(retrans_time);
     rt_advt.set_options(&ndp_opts);
+
+    let advt_packet = Vec::from_iter(rt_advt.packet().to_owned());
+    rt_advt.set_checksum(icmpv6::checksum(
+        &convert_rtadvt_icmpv6(advt_packet.as_slice()),
+        source,
+        destination,
+    ));
+
+    rt_advt
+}
+
+fn build_ipv6_packet(
+    next_header: pnet::packet::ip::IpNextHeaderProtocol,
+    source: Ipv6Addr,
+    destination: Ipv6Addr,
+    payload: &[u8],
+) -> MutableIpv6Packet {
+    let packet_len = payload.len() + MutableIpv6Packet::minimum_packet_size();
+    let mut buf = Vec::with_capacity(packet_len);
+    buf.resize(packet_len, 0);
+    let mut ipv6 = MutableIpv6Packet::owned(buf).unwrap();
+
+    ipv6.set_version(0x6);
+    ipv6.set_next_header(next_header);
+    ipv6.set_source(source);
+    ipv6.set_destination(destination);
+    ipv6.set_payload_length(payload.len() as u16);
+    ipv6.set_payload(&payload);
+
+    ipv6
+}
+
+fn build_ipv6_of_rt_advt(
+    source: Ipv6Addr,
+    destination: Ipv6Addr,
+    payload: &[u8],
+) -> MutableIpv6Packet {
+    build_ipv6_packet(
+        pnet::packet::ip::IpNextHeaderProtocols::Icmpv6,
+        source,
+        destination,
+        payload,
+    )
 }
 
 fn convert_rtadvt_icmpv6(rt_advt_packet: &[u8]) -> Icmpv6Packet {
@@ -186,6 +247,8 @@ fn convert_rtadvt_icmpv6(rt_advt_packet: &[u8]) -> Icmpv6Packet {
 }
 
 fn main() {
+    env_logger::init();
+
     let interface_name = env::args().nth(1).unwrap(); // interface name
     let interface = get_interface(&interface_name);
 
@@ -201,13 +264,7 @@ fn main() {
         }
     };
 
-    // let protocol = Layer4(Ipv6(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6));
-    // let (mut tx, _) = transport_channel(4096, protocol).unwrap();
-
     // create router advert packet
-    let mut payload_len: u16 = MutableRouterAdvertPacket::minimum_packet_size() as u16;
-    println!("advt_min: {}", payload_len); // => 16
-
     let mut ndp_opts = Vec::new();
     ndp_opts.push(build_ndpopt_mtu(64));
     ndp_opts.push(build_ndpopt_prefix(
@@ -218,11 +275,9 @@ fn main() {
         3600,
         Ipv6Addr::from_str("2001:db8:1::1").unwrap(),
     ));
-
     ndp_opts.push(build_ndpopt_src_link_addr(
         MacAddr::from_str("aa:bb:cc:dd:ee:ff").unwrap(),
     ));
-
     ndp_opts.push(build_ndpopt_rdnss(
         1800,
         vec![
@@ -231,50 +286,22 @@ fn main() {
         ],
     ));
 
-    payload_len += ndp_opts[0].length as u16 * 8;
-    payload_len += ndp_opts[1].length as u16 * 8;
-    payload_len += ndp_opts[2].length as u16 * 8;
-    payload_len += ndp_opts[3].length as u16 * 8;
+    let ip_src = Ipv6Addr::from_str("2001:db8:10::1").unwrap();
+    let ip_dst = Ipv6Addr::from_str("2001:db8:5::1").unwrap();
 
-    let mut buf = Vec::new();
-    buf.resize(payload_len as usize, 0);
-    let mut rt_advt = MutableRouterAdvertPacket::owned(buf).unwrap();
-    build_router_advert(
-        &mut rt_advt,
+    let rt_advt = build_router_advert(
         64,
         ndp::RouterAdvertFlags::OtherConf,
         1800,
         1800,
         1800,
         ndp_opts,
+        ip_src,
+        ip_dst,
     );
-
-    // let ipv6_payload = rt_advt.packet();
 
     // create ipv6 packet, L3
-    let ip_src = Ipv6Addr::from_str("2001:db8:10::1").unwrap();
-    let ip_dst = Ipv6Addr::from_str("2001:db8:5::1").unwrap();
-    let advt_packet = rt_advt.packet();
-    let cp_advt_packet = Vec::from_iter(advt_packet.to_owned());
-    let mut advt_packet = Vec::from_iter(advt_packet.to_owned());
-    let icmpv6_packet = convert_rtadvt_icmpv6(cp_advt_packet.as_slice());
-    let mut rt_advt = MutableRouterAdvertPacket::new(&mut advt_packet).unwrap();
-
-    rt_advt.set_checksum(icmpv6::checksum(&icmpv6_packet, ip_src, ip_dst));
-    let ipv6_payload = rt_advt.packet();
-    let mut buf = Vec::new();
-    buf.resize(
-        ipv6_payload.len() + MutableIpv6Packet::minimum_packet_size(),
-        0,
-    );
-    let mut ipv6 = MutableIpv6Packet::new(&mut buf).unwrap();
-
-    ipv6.set_version(0x6);
-    ipv6.set_next_header(pnet::packet::ip::IpNextHeaderProtocols::Icmpv6);
-    ipv6.set_destination(ip_dst);
-    ipv6.set_source(ip_src);
-    ipv6.set_payload_length(ipv6_payload.len() as u16);
-    ipv6.set_payload(&ipv6_payload);
+    let ipv6 = build_ipv6_of_rt_advt(ip_src, ip_dst, rt_advt.packet());
 
     // L2 ether
     let length = MutableEthernetPacket::minimum_packet_size() + ipv6.packet().len();
