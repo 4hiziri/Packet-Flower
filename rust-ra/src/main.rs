@@ -1,10 +1,12 @@
 // TODO: Fix libpnet
+#[macro_use]
+extern crate clap;
+#[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate getopts;
 extern crate pnet;
 extern crate ra;
-use getopts::Options;
+use clap::App;
 use std::env;
 use std::net::Ipv6Addr;
 use std::str::FromStr;
@@ -16,10 +18,22 @@ use pnet::packet::icmpv6::ndp;
 
 use ra::packet_builder::*;
 
-fn main() {
-    env_logger::init();
+fn parse_option() {}
 
-    let interface_name = env::args().nth(1).unwrap(); // interface name
+fn main() {
+    env_logger::init(); // logger setting
+
+    // arg parse
+    let yaml = load_yaml!("opt.yml");
+    let app = App::from_yaml(yaml)
+        .name(crate_name!())
+        .version(crate_version!())
+        .about(crate_description!())
+        .author(crate_authors!());
+
+    let args = app.get_matches();
+
+    let interface_name = args.value_of("INTERFACE").unwrap();
     let interface = get_interface(&interface_name);
 
     // Create a new channel, dealing with layer 2 packets
@@ -36,7 +50,14 @@ fn main() {
 
     // create router advert packet
     let mut ndp_opts = Vec::new();
-    ndp_opts.push(build_ndpopt_mtu(64));
+    if let Some(mtu_str) = args.value_of("mtu") {
+        ndp_opts.push(build_ndpopt_mtu(64));
+    }
+
+    debug!("{:?}", args.value_of("mtu"));
+
+    return;
+
     ndp_opts.push(build_ndpopt_prefix(
         64,
         true,
@@ -57,7 +78,7 @@ fn main() {
     ));
 
     let ip_src = Ipv6Addr::from_str("2001:db8:10::1").unwrap();
-    let ip_dst = Ipv6Addr::from_str("2001:db8:5::1").unwrap();
+    let ip_dst = Ipv6Addr::from_str("ff02::1").unwrap();
 
     let rt_advt = build_router_advert(
         64,

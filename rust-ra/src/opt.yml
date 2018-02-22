@@ -1,0 +1,81 @@
+name: ra
+args:
+  - INTERFACE:
+      help: interface that send RA      
+      index: 1
+      required: true
+  - DST-IP:
+      help: destination IP address
+      index: 2
+      required: true
+  - src-ip:
+      help: source IP address
+      index: 3
+  - hop-limit:
+      help: RA's hop limit, check size
+      long: hop-limit
+      takes_value: true
+  - other-flag:
+      help: RA's other config flag
+      long: other-flag
+      short: O
+  - managed-flag:
+      help: RA's managed config flag
+      long: managed-flag
+      short: M
+  - lifetime:
+      help: RA's router lifetime
+      long: lifetime
+      takes_value: true
+  - reachable-time:
+      help: RA's reachable time
+      long: reachable
+      takes_value: true
+  - retrans-time:
+      help: RA's retransmission time
+      long: retrans
+      takes_value: true
+  - rdnss:
+      help: set RDNSS option
+      value_name: DNS server addresses
+      short: r
+      long: rdnss
+      takes_value: true
+      multiple: true
+  - dns-lifetime:
+      help: RDNSS's lifetime
+      long: r-lifetime
+      takes_value: true
+      requires: rdnss
+  - mtu:
+      help: set MTU option
+      long: mtu
+      short: m
+      takes_value: true
+      default_value: '64'
+  - link:
+      help: set source link address option
+      long: link
+      short: l
+      takes_value: true
+      value_name: link address
+  - prefix:
+      help: set prefix option
+      long: prefix
+      short: -p
+      takes_value: true
+      value_name: prefix address
+  - prefix-l:
+      help: prefix's l flag
+      long: prefix-l
+  - prefix-a:
+      help: prefix's a flag
+      long: prefix-a
+  - prefix-valid:
+      help: prefix's valid lifetime
+      long: prefix-valid
+      takes_value: true
+  - prefix-prefer:
+      help: prefix's prefered lifetime
+      long: prefix-prefer
+      takes_value: true
