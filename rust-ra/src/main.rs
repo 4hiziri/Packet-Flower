@@ -6,8 +6,7 @@ extern crate log;
 extern crate env_logger;
 extern crate pnet;
 extern crate ra;
-use clap::App;
-use std::env;
+use clap::{App, ArgMatches};
 use std::net::Ipv6Addr;
 use std::str::FromStr;
 use pnet::datalink::{self, MacAddr};
@@ -18,7 +17,73 @@ use pnet::packet::icmpv6::ndp;
 
 use ra::packet_builder::*;
 
-fn parse_option() {}
+fn set_mtu_opt(opts: &mut Vec<ndp::NdpOption>, args: &ArgMatches) {
+    if let Some(mtu_str) = args.value_of("mtu") {
+        let mtu = if mtu_str == "" {
+            64
+        } else {
+            mtu_str.parse::<u32>().unwrap()
+        };
+
+        let mtu_opt = build_ndpopt_mtu(mtu);
+        opts.push(mtu_opt);
+    }
+}
+
+fn set_src_opt(opts: &mut Vec<ndp::NdpOption>, args: &ArgMatches) {
+    if let Some(src_link) = args.value_of("source-link") {
+        // FIXME: only accept MAC addr now
+        let mac = MacAddr::from_str(src_link).unwrap();
+        let src_opt = build_ndpopt_src_link_addr(mac);
+        opts.push(src_opt);
+    }
+}
+
+fn set_prefix_opt(opts: &mut Vec<ndp::NdpOption>, args: &ArgMatches) {
+    if let Some(prefix) = args.value_of("prefix") {
+        let prefix_addr: Ipv6Addr = Ipv6Addr::from_str(prefix).unwrap();
+
+        // TODO: prefix length setting
+        let length = match args.value_of("prefix-length") {
+            Some(p_len) => p_len.parse::<u8>().unwrap(),
+            None => 64,
+        };
+
+        let on_link = args.is_present("prefix-on-link");
+        let addr_conf = args.is_present("prefix-addr-conf");
+
+        let valid = match args.value_of("prefix-valid") {
+            Some(valid) => valid.parse::<u32>().unwrap(),
+            None => 1800,
+        };
+
+        let prefer = match args.value_of("prefix-prefer") {
+            Some(prefer) => prefer.parse::<u32>().unwrap(),
+            None => 3600,
+        };
+
+        let prefix_opt =
+            build_ndpopt_prefix(length, on_link, addr_conf, valid, prefer, prefix_addr);
+
+        opts.push(prefix_opt);
+    }
+}
+
+fn set_rdnss_opt(opts: &mut Vec<ndp::NdpOption>, args: &ArgMatches) {
+    if let Some(rdnss) = args.values_of("rdnss") {
+        let rdnss: Vec<_> = rdnss
+            .map(|addr| Ipv6Addr::from_str(addr).unwrap())
+            .collect();
+
+        let lifetime = match args.value_of("dns-lifetime") {
+            Some(lifetime) => lifetime.parse::<u32>().unwrap(),
+            None => 1800,
+        };
+
+        let rdnss_opt = build_ndpopt_rdnss(lifetime, rdnss);
+        opts.push(rdnss_opt);
+    }
+}
 
 fn main() {
     env_logger::init(); // logger setting
@@ -36,6 +101,7 @@ fn main() {
     let interface_name = args.value_of("INTERFACE").unwrap();
     let interface = get_interface(&interface_name);
 
+    // TODO: extract function
     // Create a new channel, dealing with layer 2 packets
     let mut tx = match datalink::channel(&interface, Default::default()) {
         Ok(Ethernet(tx, _)) => tx,
@@ -48,44 +114,58 @@ fn main() {
         }
     };
 
+    let ip_src = if let Some(sip) = args.value_of("src-ip") {
+        Ipv6Addr::from_str(sip).unwrap()
+    } else {
+        // TODO: get interface's IP address
+        Ipv6Addr::from_str("::1").unwrap()
+    };
+    let ip_dst = Ipv6Addr::from_str(args.value_of("DST-IP").unwrap()).unwrap();
+
     // create router advert packet
     let mut ndp_opts = Vec::new();
-    if let Some(mtu_str) = args.value_of("mtu") {
-        ndp_opts.push(build_ndpopt_mtu(64));
-    }
 
-    debug!("{:?}", args.value_of("mtu"));
+    set_mtu_opt(&mut ndp_opts, &args);
 
-    return;
+    set_prefix_opt(&mut ndp_opts, &args);
+    set_src_opt(&mut ndp_opts, &args);
 
-    ndp_opts.push(build_ndpopt_prefix(
-        64,
-        true,
-        true,
-        1800,
-        3600,
-        Ipv6Addr::from_str("2001:db8:1::1").unwrap(),
-    ));
-    ndp_opts.push(build_ndpopt_src_link_addr(
-        MacAddr::from_str("aa:bb:cc:dd:ee:ff").unwrap(),
-    ));
-    ndp_opts.push(build_ndpopt_rdnss(
-        1800,
-        vec![
-            Ipv6Addr::from_str("2001:db8:3::1").unwrap(),
-            Ipv6Addr::from_str("2001:db8:3::2").unwrap(),
-        ],
-    ));
+    set_rdnss_opt(&mut ndp_opts, &args);
 
-    let ip_src = Ipv6Addr::from_str("2001:db8:10::1").unwrap();
-    let ip_dst = Ipv6Addr::from_str("ff02::1").unwrap();
+    let hop_limit = match args.value_of("hop-limit") {
+        Some(hop) => hop.parse::<u8>().unwrap(),
+        None => 64,
+    };
+    let m_flag = if args.is_present("managed-flag") {
+        ndp::RouterAdvertFlags::ManagedAddressConf
+    } else {
+        0
+    };
+    let o_flag = if args.is_present("other-flag") {
+        ndp::RouterAdvertFlags::OtherConf
+    } else {
+        0
+    };
+    let flag = m_flag | o_flag;
+    let lifetime = match args.value_of("lifetime") {
+        Some(lifetime) => lifetime.parse::<u16>().unwrap(),
+        None => 1800,
+    };
+    let reachable = match args.value_of("reachable-time") {
+        Some(reachable) => reachable.parse::<u32>().unwrap(),
+        None => 1800,
+    };
+    let retrans = match args.value_of("retrans-time") {
+        Some(retrans) => retrans.parse::<u32>().unwrap(),
+        None => 1800,
+    };
 
     let rt_advt = build_router_advert(
-        64,
-        ndp::RouterAdvertFlags::OtherConf,
-        1800,
-        1800,
-        1800,
+        hop_limit,
+        flag,
+        lifetime,
+        reachable,
+        retrans,
         ndp_opts,
         ip_src,
         ip_dst,
@@ -97,7 +177,7 @@ fn main() {
     // L2 ether
     let ether = build_ether_packet(
         MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap(),
-        MacAddr::from_str("AA:AA:AA:AA:AA:AA").unwrap(),
+        MacAddr::from_str("08:00:27:d1:fc:38").unwrap(),
         EtherType::new(0x86dd),
         ipv6.packet(),
     );
