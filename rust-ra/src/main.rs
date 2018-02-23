@@ -14,6 +14,7 @@ use pnet::datalink::Channel::Ethernet;
 use pnet::packet::ethernet::EtherType;
 use pnet::packet::Packet;
 use pnet::packet::icmpv6::ndp;
+use pnet::packet::icmpv6::ndp::MutableRouterAdvertPacket;
 
 use ra::packet_builder::*;
 
@@ -85,6 +86,59 @@ fn set_rdnss_opt(opts: &mut Vec<ndp::NdpOption>, args: &ArgMatches) {
     }
 }
 
+fn set_router_advt<'a>(
+    ip_src: Ipv6Addr,
+    ip_dst: Ipv6Addr,
+    args: &ArgMatches,
+) -> MutableRouterAdvertPacket<'a> {
+    // create router advert packete
+    let mut ndp_opts = Vec::new();
+
+    set_mtu_opt(&mut ndp_opts, &args);
+    set_prefix_opt(&mut ndp_opts, &args);
+    set_src_opt(&mut ndp_opts, &args);
+    set_rdnss_opt(&mut ndp_opts, &args);
+
+    let hop_limit = match args.value_of("hop-limit") {
+        Some(hop) => hop.parse::<u8>().unwrap(),
+        None => 64,
+    };
+    let m_flag = if args.is_present("managed-flag") {
+        ndp::RouterAdvertFlags::ManagedAddressConf
+    } else {
+        0
+    };
+    let o_flag = if args.is_present("other-flag") {
+        ndp::RouterAdvertFlags::OtherConf
+    } else {
+        0
+    };
+    let flag = m_flag | o_flag;
+    let lifetime = match args.value_of("lifetime") {
+        Some(lifetime) => lifetime.parse::<u16>().unwrap(),
+        None => 1800,
+    };
+    let reachable = match args.value_of("reachable-time") {
+        Some(reachable) => reachable.parse::<u32>().unwrap(),
+        None => 1800,
+    };
+    let retrans = match args.value_of("retrans-time") {
+        Some(retrans) => retrans.parse::<u32>().unwrap(),
+        None => 1800,
+    };
+
+    build_router_advert(
+        hop_limit,
+        flag,
+        lifetime,
+        reachable,
+        retrans,
+        ndp_opts,
+        ip_src,
+        ip_dst,
+    )
+}
+
 fn main() {
     env_logger::init(); // logger setting
 
@@ -122,54 +176,7 @@ fn main() {
     };
     let ip_dst = Ipv6Addr::from_str(args.value_of("DST-IP").unwrap()).unwrap();
 
-    // create router advert packet
-    let mut ndp_opts = Vec::new();
-
-    set_mtu_opt(&mut ndp_opts, &args);
-
-    set_prefix_opt(&mut ndp_opts, &args);
-    set_src_opt(&mut ndp_opts, &args);
-
-    set_rdnss_opt(&mut ndp_opts, &args);
-
-    let hop_limit = match args.value_of("hop-limit") {
-        Some(hop) => hop.parse::<u8>().unwrap(),
-        None => 64,
-    };
-    let m_flag = if args.is_present("managed-flag") {
-        ndp::RouterAdvertFlags::ManagedAddressConf
-    } else {
-        0
-    };
-    let o_flag = if args.is_present("other-flag") {
-        ndp::RouterAdvertFlags::OtherConf
-    } else {
-        0
-    };
-    let flag = m_flag | o_flag;
-    let lifetime = match args.value_of("lifetime") {
-        Some(lifetime) => lifetime.parse::<u16>().unwrap(),
-        None => 1800,
-    };
-    let reachable = match args.value_of("reachable-time") {
-        Some(reachable) => reachable.parse::<u32>().unwrap(),
-        None => 1800,
-    };
-    let retrans = match args.value_of("retrans-time") {
-        Some(retrans) => retrans.parse::<u32>().unwrap(),
-        None => 1800,
-    };
-
-    let rt_advt = build_router_advert(
-        hop_limit,
-        flag,
-        lifetime,
-        reachable,
-        retrans,
-        ndp_opts,
-        ip_src,
-        ip_dst,
-    );
+    let rt_advt = set_router_advt(ip_src, ip_dst, &args);
 
     // create ipv6 packet, L3
     let ipv6 = build_ipv6_of_rt_advt(ip_src, ip_dst, rt_advt.packet());
