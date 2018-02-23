@@ -11,6 +11,14 @@ args:
   - src-ip:
       help: source IP address
       index: 3
+  - dst-mac:
+      help: destination MAC address
+      long: dst-mac
+      takes_value: true
+  - src-mac:
+      help: source MAC address
+      long: src-mac
+      takes_value: true
   - hop-limit:
       help: RA's hop limit, check size
       long: hop-limit
@@ -48,12 +56,11 @@ args:
       takes_value: true
       requires: rdnss
   - mtu:
-      help: set MTU option
+      help: set MTU option. if '' is specified, use default value 64
       long: mtu
       short: m
       takes_value: true
-      default_value: '64'
-  - link:
+  - source-link:
       help: set source link address option
       long: link
       short: l
@@ -63,19 +70,29 @@ args:
       help: set prefix option
       long: prefix
       short: -p
-      takes_value: true
       value_name: prefix address
-  - prefix-l:
-      help: prefix's l flag
+      takes_value: true      
+  - prefix-length:
+      help: prefix's length
+      long: prefix-length
+      value_name: address length
+      takes_value: true
+      requires: prefix
+  - prefix-on-link:
+      help: prefix's on-link flag
       long: prefix-l
-  - prefix-a:
-      help: prefix's a flag
+      requires: prefix
+  - prefix-addr-conf:
+      help: prefix's address-configuration flag
       long: prefix-a
+      requires: prefix
   - prefix-valid:
       help: prefix's valid lifetime
       long: prefix-valid
       takes_value: true
+      requires: prefix
   - prefix-prefer:
-      help: prefix's prefered lifetime
+      help: prefix's preferred lifetime
       long: prefix-prefer
       takes_value: true
+      requires: prefix
