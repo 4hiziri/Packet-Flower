@@ -1,8 +1,6 @@
 extern crate pnet;
 use std::net::Ipv6Addr;
-use std::str::FromStr;
 use pnet::datalink::{self, NetworkInterface, MacAddr};
-use pnet::datalink::Channel::Ethernet;
 use pnet::packet::ethernet::{MutableEthernetPacket, EtherType};
 use pnet::packet::Packet;
 use pnet::packet::ipv6::MutableIpv6Packet;
@@ -10,15 +8,9 @@ use pnet::packet::icmpv6;
 use pnet::packet::FromPacket;
 use pnet::packet::icmpv6::ndp;
 use pnet::packet::icmpv6::Icmpv6Packet;
-use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket,
-                                RouterAdvertPacket};
+use pnet::packet::icmpv6::ndp::{MutableRouterAdvertPacket, MutableNdpOptionPacket};
 use pnet::packet::icmpv6::ndp::NdpOption;
-use pnet::packet::ethernet;
-use pnet::packet::ethernet::EtherTypes;
 use pnet::util::Octets;
-use pnet::transport::TransportChannelType::Layer4;
-use pnet::transport::transport_channel;
-use pnet::transport::TransportProtocol::Ipv6;
 use std::iter::FromIterator;
 
 /// Return IPv6 NDP option source link address
