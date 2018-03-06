@@ -46,13 +46,14 @@ fn main() {
         // TODO: get interface's IP address
         Ipv6Addr::from_str("::1").unwrap()
     };
-    let ip_dst = Ipv6Addr::fxrom_str(args.value_of("DST-IP").unwrap()).unwrap();
+    let ip_dst = Ipv6Addr::from_str(args.value_of("DST-IP").unwrap()).unwrap();
 
     let rt_advt = set_router_advt(ip_src, ip_dst, &args);
 
     // create ipv6 packet, L3
     let ipv6 = build_ipv6_of_rt_advt(ip_src, ip_dst, rt_advt.packet());
 
+    // TODO: can get mac addr via interface
     // L2 ether
     let ether = build_ether_packet(
         MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap(),
