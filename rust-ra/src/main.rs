@@ -46,7 +46,7 @@ fn main() {
         // TODO: get interface's IP address
         Ipv6Addr::from_str("::1").unwrap()
     };
-    let ip_dst = Ipv6Addr::from_str(args.value_of("DST-IP").unwrap()).unwrap();
+    let ip_dst = Ipv6Addr::fxrom_str(args.value_of("DST-IP").unwrap()).unwrap();
 
     let rt_advt = set_router_advt(ip_src, ip_dst, &args);
 
