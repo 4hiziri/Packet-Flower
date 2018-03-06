@@ -9,19 +9,19 @@ extern crate ra;
 use clap::App;
 use std::net::Ipv6Addr;
 use std::str::FromStr;
-use pnet::datalink::{self, MacAddr};
+use pnet::datalink::MacAddr;
 use pnet::datalink::Channel::Ethernet;
 use pnet::packet::ethernet::EtherType;
 use pnet::packet::Packet;
 
 use ra::packet_builder::*;
 use ra::packet_config::*;
+use ra::packet_sender::*;
 
 
 fn main() {
-    env_logger::init(); // logger setting
+    env_logger::init();
 
-    // arg parse
     let yaml = load_yaml!("opt.yml");
     let app = App::from_yaml(yaml)
         .name(crate_name!())
@@ -34,17 +34,10 @@ fn main() {
     let interface_name = args.value_of("INTERFACE").unwrap();
     let interface = get_interface(&interface_name);
 
-    // TODO: extract function
     // Create a new channel, dealing with layer 2 packets
-    let mut tx = match datalink::channel(&interface, Default::default()) {
-        Ok(Ethernet(tx, _)) => tx,
-        Ok(_) => panic!("Unhandled channel type"),
-        Err(e) => {
-            panic!(
-                "An error occurred when creating the datalink channel: {}",
-                e
-            )
-        }
+    let mut tx = match get_connection(&interface) {
+        Ethernet(tx, _) => tx,
+        _ => panic!("get_connection: failed to get connection"),
     };
 
     let ip_src = if let Some(sip) = args.value_of("src-ip") {
