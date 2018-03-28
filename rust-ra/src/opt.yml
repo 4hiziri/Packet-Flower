@@ -12,11 +12,11 @@ args:
       help: source IP address
       index: 3
   - dst-mac:
-      help: destination MAC address
+      help: destination MAC address. default value is broadcast
       long: dst-mac
       takes_value: true
   - src-mac:
-      help: source MAC address
+      help: source MAC address. default value is interface's address
       long: src-mac
       takes_value: true
   - hop-limit:

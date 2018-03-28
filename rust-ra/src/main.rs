@@ -9,6 +9,7 @@ extern crate ra;
 use clap::App;
 use std::net::Ipv6Addr;
 use std::str::FromStr;
+use std::net::IpAddr;
 use pnet::datalink::MacAddr;
 use pnet::datalink::Channel::Ethernet;
 use pnet::packet::ethernet::EtherType;
@@ -40,6 +41,24 @@ fn main() {
         _ => panic!("get_connection: failed to get connection"),
     };
 
+    // can get Ipv4/6 address and netmask info
+    // which one use?
+    debug!("{:?}", interface.ips);
+    debug!("{:?}", interface.ips[1]);
+    let ips = interface.ips.clone();
+    let ips: Vec<Ipv6Addr> = ips.iter()
+        .map(|ip| ip.ip())
+        .filter(|ip| ip.is_ipv6())
+        .map(|ipv6| match ipv6 {
+            IpAddr::V6(addr) => addr,
+            _ => panic!("can't get ipv6 address: {:?}", ipv6),
+        })
+        .collect();
+
+    let ipv6: Ipv6Addr = ips[0];
+    debug!("{:?}", ipv6);
+    debug!("{:?}", ips);
+
     let ip_src = if let Some(sip) = args.value_of("src-ip") {
         Ipv6Addr::from_str(sip).unwrap()
     } else {
@@ -54,10 +73,17 @@ fn main() {
     let ipv6 = build_ipv6_of_rt_advt(ip_src, ip_dst, rt_advt.packet());
 
     // TODO: can get mac addr via interface
+    let src_mac = if args.is_present("src-mac") {
+        MacAddr::from_str(args.value_of("src-mac").unwrap()).unwrap()
+    } else {
+        interface.mac_address()
+    };
+
     // L2 ether
     let ether = build_ether_packet(
-        MacAddr::from_str("BB:BB:BB:BB:BB:BB").unwrap(),
-        MacAddr::from_str("08:00:27:d1:fc:38").unwrap(),
+        src_mac,
+        // MacAddr::from_str("08:00:27:d1:fc:38").unwrap(),
+        MacAddr::from_str("ff:ff:ff:ff:ff:ff").unwrap(),
         EtherType::new(0x86dd),
         ipv6.packet(),
     );
